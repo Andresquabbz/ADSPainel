@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+import { PublicSiteView } from "./s.$siteSlug";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -85,20 +86,24 @@ const FAQ = [
   },
 ];
 
+function getSubdomainSlug() {
+  if (typeof window === "undefined") return null;
+  const host = window.location.hostname.toLowerCase();
+  const rootDomain = "adspainel.site";
+  if (host.endsWith(`.${rootDomain}`)) {
+    const sub = host.slice(0, -(rootDomain.length + 1));
+    const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
+    if (sub && !reserved.includes(sub)) return sub;
+  }
+  return null;
+}
+
 function Landing() {
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const host = window.location.hostname.toLowerCase();
-      const rootDomain = "adspainel.site";
-      if (host.endsWith(`.${rootDomain}`)) {
-        const subdomain = host.slice(0, -(rootDomain.length + 1));
-        const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
-        if (subdomain && !reserved.includes(subdomain)) {
-          window.location.replace(`/s/${subdomain}`);
-        }
-      }
-    }
-  }, []);
+  const [subdomain] = useState<string | null>(getSubdomainSlug);
+
+  if (subdomain) {
+    return <PublicSiteView siteSlug={subdomain} />;
+  }
 
   const plans = useQuery({
     queryKey: ["plans"],

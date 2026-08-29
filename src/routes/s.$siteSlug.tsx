@@ -50,6 +50,10 @@ function whatsappHref(raw: string | null): string {
 
 function PublicSitePage() {
   const { siteSlug } = Route.useParams();
+  return <PublicSiteView siteSlug={siteSlug} />;
+}
+
+export function PublicSiteView({ siteSlug }: { siteSlug: string }) {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["public-site", siteSlug],
