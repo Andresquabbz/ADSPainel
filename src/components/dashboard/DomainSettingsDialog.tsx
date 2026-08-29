@@ -205,7 +205,7 @@ export function DomainSettingsDialog({
       const expectedTarget = APP_CONFIG.cnameTarget.toLowerCase();
 
       const isPointing = cnameRecords.some((val) =>
-        val.includes(expectedTarget) || val.includes("siteai.com") || val.includes("adspainel.com")
+        val.includes(expectedTarget) || val.includes("adspainel.site") || val.includes("adspainel.com")
       );
 
       if (isPointing) {
