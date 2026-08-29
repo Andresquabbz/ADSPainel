@@ -13,26 +13,6 @@ import {
 } from "lucide-react";
 import type { AnySection } from "@/components/editor/AddSectionModal";
 
-export const Route = createFileRoute("/s/$siteSlug")({
-  loader: async ({ params }) => {
-    return await getPublicSite({ data: params.siteSlug });
-  },
-  head: ({ loaderData, params }) => {
-    const site = loaderData?.site;
-    const seo = (site?.seo as { title?: string; description?: string }) || {};
-    return {
-      meta: [
-        { title: seo.title || site?.name || `Site — ${params.siteSlug}` },
-        { name: "description", content: seo.description || `Site profissional de ${site?.name || params.siteSlug}` },
-        { property: "og:title", content: seo.title || site?.name || `Site — ${params.siteSlug}` },
-        { property: "og:description", content: seo.description || `Site profissional de ${site?.name || params.siteSlug}` },
-        { property: "og:type", content: "website" },
-      ],
-    };
-  },
-  component: PublicSitePage,
-});
-
 function extractMetaVerification(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -43,6 +23,38 @@ function extractMetaVerification(raw: string | null | undefined): string | null 
   }
   return trimmed.replace(/<[^>]*>?/gm, "").trim();
 }
+
+export const Route = createFileRoute("/s/$siteSlug")({
+  loader: async ({ params }) => {
+    return await getPublicSite({ data: params.siteSlug });
+  },
+  head: ({ loaderData, params }) => {
+    const site = loaderData?.site;
+    const seo = (site?.seo as { title?: string; description?: string }) || {};
+    const content = (site?.content as { facebook_domain_verification?: string; meta_tag?: string }) || {};
+    const fbCode = extractMetaVerification(content.facebook_domain_verification || content.meta_tag);
+
+    const metaList: Array<{ title?: string; name?: string; content?: string; property?: string }> = [
+      { title: seo.title || site?.name || `Site — ${params.siteSlug}` },
+      { name: "description", content: seo.description || `Site profissional de ${site?.name || params.siteSlug}` },
+      { property: "og:title", content: seo.title || site?.name || `Site — ${params.siteSlug}` },
+      { property: "og:description", content: seo.description || `Site profissional de ${site?.name || params.siteSlug}` },
+      { property: "og:type", content: "website" },
+    ];
+
+    if (fbCode) {
+      metaList.push({
+        name: "facebook-domain-verification",
+        content: fbCode,
+      });
+    }
+
+    return {
+      meta: metaList,
+    };
+  },
+  component: PublicSitePage,
+});
 
 function formatPhone(raw: string | null): string {
   if (!raw) return "";
