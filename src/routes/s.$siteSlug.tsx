@@ -26,7 +26,11 @@ function extractMetaVerification(raw: string | null | undefined): string | null 
 
 export const Route = createFileRoute("/s/$siteSlug")({
   loader: async ({ params }) => {
-    return await getPublicSite({ data: params.siteSlug });
+    try {
+      return await getPublicSite({ data: params.siteSlug });
+    } catch {
+      return null;
+    }
   },
   head: ({ loaderData, params }) => {
     const site = loaderData?.site;
@@ -53,6 +57,7 @@ export const Route = createFileRoute("/s/$siteSlug")({
       meta: metaList,
     };
   },
+  errorComponent: () => <PublicSitePage />,
   component: PublicSitePage,
 });
 

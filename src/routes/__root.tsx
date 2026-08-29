@@ -38,7 +38,21 @@ function NotFoundComponent() {
   );
 }
 
+import { PublicSiteView } from "./s.$siteSlug";
+
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname.toLowerCase();
+    const rootDomain = "adspainel.site";
+    if (host.endsWith(`.${rootDomain}`)) {
+      const sub = host.slice(0, -(rootDomain.length + 1));
+      const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
+      if (sub && !reserved.includes(sub)) {
+        return <PublicSiteView siteSlug={sub} />;
+      }
+    }
+  }
+
   console.error(error);
   const router = useRouter();
   useEffect(() => {

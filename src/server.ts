@@ -60,7 +60,10 @@ export default {
           if (subdomain && !reserved.includes(subdomain)) {
             if (url.pathname === "/" || url.pathname === "") {
               const rewrittenUrl = new URL(`/s/${subdomain}${url.search}`, url.origin);
-              actualRequest = new Request(rewrittenUrl.toString(), request);
+              actualRequest = new Request(rewrittenUrl.toString(), {
+                method: request.method,
+                headers: request.headers,
+              });
             }
           }
         }

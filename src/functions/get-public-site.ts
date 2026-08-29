@@ -13,7 +13,7 @@ export const getPublicSite = createServerFn({ method: "GET" })
       process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      throw new Error("Configuração do banco de dados ausente.");
+      return { site: null, pages: [], isPublished: false };
     }
 
     const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
