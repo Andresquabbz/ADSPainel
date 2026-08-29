@@ -72,7 +72,7 @@ export const createMercadoPagoCheckout = createServerFn({ method: "POST" })
           ],
           payer: {
             name: profile?.full_name || "Cliente",
-            email: profile?.email || (context.claims as { email?: string })?.email || "cliente@adspainel.com",
+            email: profile?.email || (context.claims as { email?: string })?.email || "cliente@adspainel.site",
           },
           back_urls: {
             success: `${input.origin}/dashboard?payment=success&pkg=${pkg.slug}&tokens=${pkg.tokens}`,

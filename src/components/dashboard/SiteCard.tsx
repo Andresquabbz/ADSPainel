@@ -125,10 +125,17 @@ export function SiteCard({ site, userId }: SiteCardProps) {
             {site.category && (
               <p className="label-mono mt-1 text-muted-foreground">{site.category}</p>
             )}
-            <p className="mt-2 truncate font-mono text-xs text-muted-foreground">
-              {subdomain}
-            </p>
-            <p className="label-mono mt-3 text-muted-foreground">
+            <a
+              href={`/s/${site.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 truncate font-mono text-xs text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span>adspainel.site/s/{site.slug}</span>
+              <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
+            </a>
+            <p className="label-mono mt-2 text-muted-foreground">
               Atualizado {timeAgo(site.updated_at)}
             </p>
           </div>
