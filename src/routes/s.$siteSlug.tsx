@@ -14,14 +14,23 @@ import {
 import type { AnySection } from "@/components/editor/AddSectionModal";
 
 export const Route = createFileRoute("/s/$siteSlug")({
+  loader: async ({ params }) => {
+    return await getPublicSite({ data: params.siteSlug });
+  },
+  head: ({ loaderData, params }) => {
+    const site = loaderData?.site;
+    const seo = (site?.seo as { title?: string; description?: string }) || {};
+    return {
+      meta: [
+        { title: seo.title || site?.name || `Site — ${params.siteSlug}` },
+        { name: "description", content: seo.description || `Site profissional de ${site?.name || params.siteSlug}` },
+        { property: "og:title", content: seo.title || site?.name || `Site — ${params.siteSlug}` },
+        { property: "og:description", content: seo.description || `Site profissional de ${site?.name || params.siteSlug}` },
+        { property: "og:type", content: "website" },
+      ],
+    };
+  },
   component: PublicSitePage,
-  head: ({ params }) => ({
-    meta: [
-      { title: `Site — ${params.siteSlug}` },
-      { name: "description", content: "Site criado na plataforma ADSPainel" },
-      { property: "og:type", content: "website" },
-    ],
-  }),
 });
 
 function extractMetaVerification(raw: string | null | undefined): string | null {
@@ -50,14 +59,15 @@ function whatsappHref(raw: string | null): string {
 
 function PublicSitePage() {
   const { siteSlug } = Route.useParams();
-  return <PublicSiteView siteSlug={siteSlug} />;
+  const loaderData = Route.useLoaderData();
+  return <PublicSiteView siteSlug={siteSlug} initialData={loaderData} />;
 }
 
-export function PublicSiteView({ siteSlug }: { siteSlug: string }) {
-
+export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; initialData?: any }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["public-site", siteSlug],
     queryFn: () => getPublicSite({ data: siteSlug }),
+    initialData,
   });
 
   if (isLoading) {
