@@ -18,7 +18,22 @@ export const getPublicSite = createServerFn({ method: "GET" })
 
     const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
 
-    // 1. Fetch site by slug
+    // 1. Try RPC function first
+    try {
+      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
+        "get_public_site_by_slug",
+        { site_slug: slug }
+      );
+      if (!rpcError && rpcData?.site) {
+        return {
+          site: rpcData.site,
+          pages: rpcData.pages || [],
+          isPublished: !!rpcData.isPublished,
+        };
+      }
+    } catch {}
+
+    // 2. Fetch site by slug
     const { data: site, error: siteError } = await supabase
       .from("sites")
       .select("*")

@@ -153,11 +153,14 @@ CREATE TABLE public.sites (
 CREATE INDEX sites_user_id_idx ON public.sites(user_id);
 CREATE INDEX sites_status_idx ON public.sites(status);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.sites TO authenticated;
+GRANT SELECT ON public.sites TO anon;
 GRANT ALL ON public.sites TO service_role;
 ALTER TABLE public.sites ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "sites_owner_all" ON public.sites FOR ALL TO authenticated
   USING (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'))
   WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "sites_public_select" ON public.sites FOR SELECT TO anon, authenticated
+  USING (true);
 CREATE TRIGGER sites_updated_at BEFORE UPDATE ON public.sites FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE TRIGGER profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -177,11 +180,14 @@ CREATE TABLE public.site_pages (
 );
 CREATE INDEX site_pages_site_idx ON public.site_pages(site_id);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.site_pages TO authenticated;
+GRANT SELECT ON public.site_pages TO anon;
 GRANT ALL ON public.site_pages TO service_role;
 ALTER TABLE public.site_pages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "site_pages_owner_all" ON public.site_pages FOR ALL TO authenticated
   USING (auth.uid() = user_id OR public.has_role(auth.uid(),'admin'))
   WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "site_pages_public_select" ON public.site_pages FOR SELECT TO anon, authenticated
+  USING (true);
 CREATE TRIGGER site_pages_updated_at BEFORE UPDATE ON public.site_pages FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- 10. DOMÍNIOS PRÓPRIOS
