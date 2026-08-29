@@ -57,7 +57,6 @@ export const Route = createFileRoute("/s/$siteSlug")({
       meta: metaList,
     };
   },
-  errorComponent: () => <PublicSitePage />,
   component: PublicSitePage,
 });
 
