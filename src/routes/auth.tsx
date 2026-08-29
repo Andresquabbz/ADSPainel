@@ -80,8 +80,10 @@ function AuthPage() {
           }
         } catch {}
 
-        toast.success("Conta criada! Redirecionando...");
-        navigate({ to: "/dashboard" });
+        toast.info("Conta criada com sucesso!", {
+          description: "Verifique seu e-mail ou confirme o cadastro para acessar.",
+          duration: 8000,
+        });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -89,7 +91,18 @@ function AuthPage() {
         navigate({ to: "/dashboard" });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível continuar.");
+      let msg = "Não foi possível continuar.";
+      if (error instanceof Error) {
+        msg = error.message;
+        if (msg.includes("Invalid login credentials")) {
+          msg = "E-mail ou senha incorretos. Se você acabou de criar a conta, desative a confirmação de e-mail no Supabase ou confirme pelo e-mail recebido.";
+        } else if (msg.includes("User already registered")) {
+          msg = "Este e-mail já possui cadastro. Por favor, clique em 'Entrar' logo abaixo.";
+        } else if (msg.includes("Password is known to be weak")) {
+          msg = "Senha considerada fraca. Crie uma senha com letras maiúsculas, números e símbolos.";
+        }
+      }
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
