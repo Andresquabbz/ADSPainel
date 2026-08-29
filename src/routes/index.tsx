@@ -12,20 +12,105 @@ import {
 } from "@/components/ui/accordion";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { APP_CONFIG, formatBRL } from "@/config/app";
+import { createServerFn } from "@tanstack/react-start";
+import { getPublicSite } from "@/functions/get-public-site";
 import { TOKEN_CONFIG } from "@/config/tokens";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: `${APP_CONFIG.name} — Crie seu site profissional com IA` },
-      { name: "description", content: APP_CONFIG.subtitle },
-      { property: "og:title", content: `${APP_CONFIG.name} — Sites profissionais com IA` },
-      { property: "og:description", content: APP_CONFIG.subtitle },
-    ],
-  }),
-  component: Landing,
+function extractMetaVerification(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/content=["']([^"']+)["']/i);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return trimmed.replace(/<[^>]*>?/gm, "").trim();
+}
+
+const getHostHeader = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const req = getRequest();
+    return req?.headers?.get("host") || "";
+  } catch {
+    return "";
+  }
 });
+
+export const Route = createFileRoute("/")({
+  loader: async () => {
+    let host = "";
+    if (typeof window !== "undefined") {
+      host = window.location.hostname.toLowerCase();
+    } else {
+      try {
+        host = await getHostHeader();
+      } catch {
+        host = "";
+      }
+    }
+    const rootDomain = "adspainel.site";
+    let subdomain: string | null = null;
+    if (host.includes(`.${rootDomain}`)) {
+      const parts = host.split(":")[0];
+      if (parts.endsWith(`.${rootDomain}`)) {
+        const sub = parts.slice(0, -(rootDomain.length + 1));
+        const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
+        if (sub && !reserved.includes(sub)) {
+          subdomain = sub;
+        }
+      }
+    }
+
+    if (subdomain) {
+      try {
+        const siteData = await getPublicSite({ data: subdomain });
+        return { subdomain, siteData };
+      } catch {
+        return { subdomain, siteData: null };
+      }
+    }
+
+    return { subdomain: null, siteData: null };
+  },
+  head: ({ loaderData }) => {
+    if (loaderData?.siteData?.site) {
+      const site = loaderData.siteData.site;
+      const seo = (site.seo as { title?: string; description?: string }) || {};
+      const content = (site.content as { facebook_domain_verification?: string; meta_tag?: string }) || {};
+      const fbCode = extractMetaVerification(content.facebook_domain_verification || content.meta_tag);
+      const metaList: Array<{ title?: string; name?: string; content?: string; property?: string }> = [
+        { title: seo.title || site.name },
+        { name: "description", content: seo.description || site.name },
+        { property: "og:title", content: seo.title || site.name },
+        { property: "og:description", content: seo.description || site.name },
+        { property: "og:type", content: "website" },
+      ];
+      if (fbCode) {
+        metaList.push({ name: "facebook-domain-verification", content: fbCode });
+      }
+      return { meta: metaList };
+    }
+    return {
+      meta: [
+        { title: `${APP_CONFIG.name} — Crie seu site profissional com IA` },
+        { name: "description", content: APP_CONFIG.subtitle },
+        { property: "og:title", content: `${APP_CONFIG.name} — Sites profissionais com IA` },
+        { property: "og:description", content: APP_CONFIG.subtitle },
+      ],
+    };
+  },
+  component: IndexPage,
+});
+
+function IndexPage() {
+  const { subdomain, siteData } = Route.useLoaderData();
+  if (subdomain) {
+    return <PublicSiteView siteSlug={subdomain} initialData={siteData} />;
+  }
+  return <Landing />;
+}
 
 const FEATURES = [
   {
@@ -86,24 +171,7 @@ const FAQ = [
   },
 ];
 
-function getSubdomainSlug() {
-  if (typeof window === "undefined") return null;
-  const host = window.location.hostname.toLowerCase();
-  const rootDomain = "adspainel.site";
-  if (host.endsWith(`.${rootDomain}`)) {
-    const sub = host.slice(0, -(rootDomain.length + 1));
-    const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
-    if (sub && !reserved.includes(sub)) return sub;
-  }
-  return null;
-}
-
 function Landing() {
-  const [subdomain] = useState<string | null>(getSubdomainSlug);
-
-  if (subdomain) {
-    return <PublicSiteView siteSlug={subdomain} />;
-  }
 
   const plans = useQuery({
     queryKey: ["plans"],
