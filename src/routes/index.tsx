@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -85,6 +86,20 @@ const FAQ = [
 ];
 
 function Landing() {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      const rootDomain = "adspainel.site";
+      if (host.endsWith(`.${rootDomain}`)) {
+        const subdomain = host.slice(0, -(rootDomain.length + 1));
+        const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
+        if (subdomain && !reserved.includes(subdomain)) {
+          window.location.replace(`/s/${subdomain}`);
+        }
+      }
+    }
+  }, []);
+
   const plans = useQuery({
     queryKey: ["plans"],
     queryFn: async () => {

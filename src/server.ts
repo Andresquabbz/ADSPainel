@@ -47,8 +47,29 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      let actualRequest = request;
+      try {
+        const url = new URL(request.url);
+        const host = url.hostname.toLowerCase();
+        const rootDomain = "adspainel.site";
+
+        // Subdomain routing: if accessing <slug>.adspainel.site, route to /s/<slug>
+        if (host.endsWith(`.${rootDomain}`)) {
+          const subdomain = host.slice(0, -(rootDomain.length + 1));
+          const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
+          if (subdomain && !reserved.includes(subdomain)) {
+            if (url.pathname === "/" || url.pathname === "") {
+              const rewrittenUrl = new URL(`/s/${subdomain}${url.search}`, url.origin);
+              actualRequest = new Request(rewrittenUrl.toString(), request);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error in subdomain routing:", err);
+      }
+
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(actualRequest, env, ctx);
       const normalized = await normalizeCatastrophicSsrResponse(response);
 
       // ── Inject OWASP Security Headers & Force HTTPS (HSTS) ────────────────
