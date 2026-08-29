@@ -267,7 +267,8 @@ export const generateSite = createServerFn({ method: "POST" })
         email: input.email ?? null,
         city: input.city ?? null,
         state: input.state ?? null,
-        status: "draft",
+        status: "published",
+        published_at: new Date().toISOString(),
         description: "",
         content: {
           cnpj: input.cnpj ?? null,
