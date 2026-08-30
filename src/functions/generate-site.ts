@@ -304,7 +304,8 @@ export const generateSite = createServerFn({ method: "POST" })
 
     // ── 5. Debit tokens ──────────────────────────────────────────────────────
     if (!isAdmin) {
-      const newBalance = profile.token_balance - TOKEN_COST;
+      const currentBalance = Number(profile.token_balance) || 0;
+      const newBalance = Math.max(0, currentBalance - TOKEN_COST);
 
       await supabase
         .from("profiles")
@@ -318,6 +319,7 @@ export const generateSite = createServerFn({ method: "POST" })
         balance_after: newBalance,
         description: `Geração de site: ${input.name}`,
       });
+      console.log(`[generate-site] Debited ${TOKEN_COST} tokens from user ${userId}. Balance: ${currentBalance} -> ${newBalance}`);
     } else {
       // Record admin generation without debiting
       await supabase.from("token_transactions").insert({

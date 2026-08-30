@@ -123,7 +123,7 @@ function DashboardPage() {
       if (error) throw error;
       if (!data) return null;
       const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
-      if (!isAdminUser && data.token_balance > 10) {
+      if (!isAdminUser && data.token_balance >= 10) {
         await supabase
           .from("profiles")
           .update({ token_balance: 7.5 })
