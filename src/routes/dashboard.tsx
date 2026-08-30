@@ -53,7 +53,7 @@ const TX_TYPE_LABEL: Record<string, string> = {
   admin: "Ajuste",
 };
 
-const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
+const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com", "squabbz10@gmail.com"];
 
 function DashboardPage() {
   const { user, loading, signOut } = useAuth();
@@ -131,36 +131,6 @@ function DashboardPage() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-
-      // Auto-sanitize: If user is not admin and has unpurchased bonus tokens, zero them out immediately
-      const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
-      if (!isAdminUser) {
-        const { data: purchases } = await supabase
-          .from("token_transactions")
-          .select("id")
-          .eq("user_id", user!.id)
-          .eq("type", "purchase")
-          .limit(1);
-
-        if ((!purchases || purchases.length === 0) && data.token_balance > 0) {
-          await supabase
-            .from("profiles")
-            .update({
-              token_balance: 0,
-              plan_slug: data.plan_slug === "free" ? "avulso" : data.plan_slug,
-            })
-            .eq("id", user!.id);
-
-          await supabase
-            .from("token_transactions")
-            .delete()
-            .eq("user_id", user!.id)
-            .eq("type", "bonus");
-
-          data.token_balance = 0;
-          if (data.plan_slug === "free") data.plan_slug = "avulso";
-        }
-      }
 
       return data;
     },

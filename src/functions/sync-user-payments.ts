@@ -46,15 +46,16 @@ export const syncUserPayments = createServerFn({ method: "POST" })
             .ilike("description", `%${paymentRef}%`)
             .maybeSingle();
 
-          if (!existingTx) {
-            // 2. Fetch current profile
-            const { data: prof } = await supabase
-              .from("profiles")
-              .select("token_balance")
-              .eq("id", userId)
-              .maybeSingle();
+          // 2. Fetch current profile
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("token_balance")
+            .eq("id", userId)
+            .maybeSingle();
 
-            const currentBal = Number(prof?.token_balance || 0);
+          const currentBal = Number(prof?.token_balance || 0);
+
+          if (!existingTx) {
             const newBal = currentBal + tokensToAdd;
 
             // 3. Update profile balance
@@ -89,6 +90,16 @@ export const syncUserPayments = createServerFn({ method: "POST" })
 
             totalAdded += tokensToAdd;
             console.log(`[syncUserPayments] Successfully credited ${tokensToAdd} tokens to user ${userId} for payment ${paymentRef}`);
+          } else if (currentBal < tokensToAdd) {
+            // Self-healing: if transaction was recorded previously but balance was wiped, restore tokens:
+            const restoredBal = currentBal + tokensToAdd;
+            await supabase
+              .from("profiles")
+              .update({ token_balance: restoredBal })
+              .eq("id", userId);
+
+            totalAdded += tokensToAdd;
+            console.log(`[syncUserPayments] Restored missing ${tokensToAdd} tokens to user ${userId} (previous balance: ${currentBal}, new: ${restoredBal})`);
           }
         }
       }
