@@ -261,6 +261,14 @@ export function CreateSiteWizard({ open, onOpenChange, userId }: CreateSiteWizar
         }
       }
 
+      queryClient.setQueryData(["profile", userId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          token_balance: Math.max(0, (Number(old.token_balance) || 0) - 2.5),
+        };
+      });
+
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Site gerado com sucesso! 🎉", {
