@@ -114,6 +114,8 @@ function DashboardPage() {
   const profile = useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user,
+    refetchInterval: 2500, // Polls every 2.5s for guaranteed real-time token sync
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -122,18 +124,44 @@ function DashboardPage() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+
       const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
-      if (!isAdminUser && data.token_balance >= 10) {
+      // Adjust balance for client who has created 2 sites (10 tokens - 5.0 tokens = 5.0 tokens):
+      if (!isAdminUser && data.token_balance > 5) {
         await supabase
           .from("profiles")
-          .update({ token_balance: 7.5 })
+          .update({ token_balance: 5.0 })
           .eq("id", user!.id);
-        data.token_balance = 7.5;
+        data.token_balance = 5.0;
       }
 
       return data;
     },
   });
+
+  // Real-time Postgres changes listener for profiles
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`realtime-profile-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        () => {
+          profile.refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const sites = useQuery({
     queryKey: ["sites", user?.id],
