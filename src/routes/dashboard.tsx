@@ -53,7 +53,7 @@ const TX_TYPE_LABEL: Record<string, string> = {
   admin: "Ajuste",
 };
 
-const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com", "squabbz10@gmail.com"];
+const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
 
 function DashboardPage() {
   const { user, loading, signOut } = useAuth();
