@@ -23,6 +23,7 @@ import {
 import { SITE_CATEGORIES, SITE_GOALS, SITE_STYLES, SITE_FONTS } from "@/config/app";
 import { generateSite } from "@/functions/generate-site";
 import { GeneratingScreen } from "./GeneratingScreen";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -223,6 +224,32 @@ export function CreateSiteWizard({ open, onOpenChange, userId: _userId }: Create
           state: data.state.trim() || null,
         },
       });
+
+      // Deduct 2.5 tokens from the user profile if not admin
+      const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
+      const { data: curProf } = await supabase
+        .from("profiles")
+        .select("token_balance, email")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const userEmail = (curProf?.email || "").toLowerCase();
+      if (!ADMIN_EMAILS.includes(userEmail) && curProf) {
+        const currentBal = Number(curProf.token_balance) || 0;
+        const newBal = Math.max(0, currentBal - 2.5);
+        await supabase
+          .from("profiles")
+          .update({ token_balance: newBal })
+          .eq("id", userId);
+
+        await supabase.from("token_transactions").insert({
+          user_id: userId,
+          type: "generation",
+          amount: -2.5,
+          balance_after: newBal,
+          description: `Geração de site: ${data.name.trim()}`,
+        });
+      }
 
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });

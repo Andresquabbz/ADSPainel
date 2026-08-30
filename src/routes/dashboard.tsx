@@ -126,13 +126,13 @@ function DashboardPage() {
       if (!data) return null;
 
       const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
-      // Adjust client to 2.5 tokens (10 tokens purchased - 3 sites * 2.5 = 2.5 tokens):
-      if (!isAdminUser && data.token_balance >= 5) {
+      // The client has generated all 4 sites (4 * 2.5 = 10 tokens consumed -> 0 tokens remaining):
+      if (!isAdminUser && data.token_balance > 0) {
         await supabase
           .from("profiles")
-          .update({ token_balance: 2.5 })
+          .update({ token_balance: 0 })
           .eq("id", user!.id);
-        data.token_balance = 2.5;
+        data.token_balance = 0;
       }
 
       return data;
