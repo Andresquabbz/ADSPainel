@@ -126,13 +126,13 @@ export function SiteCard({ site, userId }: SiteCardProps) {
               <p className="label-mono mt-1 text-muted-foreground">{site.category}</p>
             )}
             <a
-              href={`/s/${site.slug}`}
+              href={`https://${subdomain}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1.5 truncate font-mono text-xs text-primary hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
-              <span>adspainel.site/s/{site.slug}</span>
+              <span>{subdomain}</span>
               <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
             </a>
             <p className="label-mono mt-2 text-muted-foreground">
@@ -154,15 +154,15 @@ export function SiteCard({ site, userId }: SiteCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem asChild>
-                <Link
-                  to="/s/$siteSlug"
-                  params={{ siteSlug: site.slug }}
+                <a
+                  href={`https://${subdomain}`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Ver site público
-                </Link>
+                </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link

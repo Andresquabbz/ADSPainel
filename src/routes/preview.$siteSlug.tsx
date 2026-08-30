@@ -66,17 +66,19 @@ type AnySection = Record<string, unknown> & { type: string };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatPhone(raw: string | null): string {
+function formatPhone(raw: unknown): string {
   if (!raw) return "";
-  const d = raw.replace(/\D/g, "");
+  const str = String(raw);
+  const d = str.replace(/\D/g, "");
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return raw;
+  return str;
 }
 
-function whatsappHref(raw: string | null): string {
+function whatsappHref(raw: unknown): string {
   if (!raw) return "#";
-  return `https://wa.me/55${raw.replace(/\D/g, "")}`;
+  const str = String(raw);
+  return `https://wa.me/55${str.replace(/\D/g, "")}`;
 }
 
 // ─── Section renderers ────────────────────────────────────────────────────────
@@ -361,13 +363,21 @@ function PreviewPage() {
   const { data: site, isLoading, error } = useQuery({
     queryKey: ["preview-site", siteSlug],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sites")
-        .select("*")
-        .eq("slug", siteSlug)
-        .maybeSingle();
-      if (error) throw error;
-      return data as SiteData | null;
+      try {
+        const { data, error } = await supabase
+          .from("sites")
+          .select("*")
+          .eq("slug", siteSlug)
+          .maybeSingle();
+        if (error) {
+          console.error("Preview site error:", error);
+          return null;
+        }
+        return data as SiteData | null;
+      } catch (err) {
+        console.error("Preview site exception:", err);
+        return null;
+      }
     },
   });
 
@@ -375,13 +385,21 @@ function PreviewPage() {
     queryKey: ["preview-pages", site?.id],
     enabled: !!site?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_pages")
-        .select("id, title, path, sections, position")
-        .eq("site_id", site!.id)
-        .order("position");
-      if (error) throw error;
-      return (data ?? []) as SitePage[];
+      try {
+        const { data, error } = await supabase
+          .from("site_pages")
+          .select("id, title, path, sections, position")
+          .eq("site_id", site!.id)
+          .order("position");
+        if (error) {
+          console.error("Preview pages error:", error);
+          return [];
+        }
+        return (data ?? []) as SitePage[];
+      } catch (err) {
+        console.error("Preview pages exception:", err);
+        return [];
+      }
     },
   });
 

@@ -229,7 +229,7 @@ export function CreateSiteWizard({ open, onOpenChange, userId: _userId }: Create
         description: `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"}.`,
       });
       handleClose();
-      navigate({ to: "/preview/$siteSlug", params: { siteSlug: result.siteSlug } });
+      navigate({ to: "/editor/$siteId", params: { siteId: result.siteId } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erro ao gerar o site.";
       toast.error(msg);
