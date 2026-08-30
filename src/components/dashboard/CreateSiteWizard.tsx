@@ -237,18 +237,28 @@ export function CreateSiteWizard({ open, onOpenChange, userId }: CreateSiteWizar
       if (!ADMIN_EMAILS.includes(userEmail) && curProf) {
         const currentBal = Number(curProf.token_balance) || 0;
         const newBal = Math.max(0, currentBal - 2.5);
-        await supabase
+        const { error: updErr } = await supabase
           .from("profiles")
           .update({ token_balance: newBal })
           .eq("id", userId);
 
-        await supabase.from("token_transactions").insert({
-          user_id: userId,
-          type: "generation",
-          amount: -2.5,
-          balance_after: newBal,
-          description: `Geração de site: ${data.name.trim()}`,
-        });
+        if (updErr) {
+          console.error("[Wizard] Failed to update balance:", updErr);
+        } else {
+          console.log(`[Wizard] Debited 2.5 tokens: ${currentBal} -> ${newBal}`);
+        }
+
+        try {
+          await supabase.from("token_transactions").insert({
+            user_id: userId,
+            type: "generation",
+            amount: -2.5,
+            balance_after: newBal,
+            description: `Geração de site: ${data.name.trim()}`,
+          });
+        } catch (txErr) {
+          console.error("[Wizard] Transaction log error (ignored):", txErr);
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ["sites"] });

@@ -124,17 +124,6 @@ function DashboardPage() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-
-      const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
-      if (!isAdminUser && typeof window !== "undefined" && !sessionStorage.getItem("bal_init_v2")) {
-        sessionStorage.setItem("bal_init_v2", "true");
-        await supabase
-          .from("profiles")
-          .update({ token_balance: 10 })
-          .eq("id", user!.id);
-        data.token_balance = 10;
-      }
-
       return data;
     },
   });
