@@ -54,11 +54,12 @@ export const createMercadoPagoCheckout = createServerFn({ method: "POST" })
       );
     }
 
-    const MP_ACCESS_TOKEN = process.env["MERCADO_PAGO_ACCESS_TOKEN"];
+    const MP_ACCESS_TOKEN = (process.env["MERCADO_PAGO_ACCESS_TOKEN"] || "").replace(/^['"]|['"]$/g, "");
 
     // 3. If Mercado Pago token is configured, call official Checkout Pro API
     if (MP_ACCESS_TOKEN) {
       try {
+        const baseUrl = input.origin.startsWith("http") ? input.origin : "https://adspainel.site";
         const preferencePayload = {
           items: [
             {
@@ -75,11 +76,12 @@ export const createMercadoPagoCheckout = createServerFn({ method: "POST" })
             email: profile?.email || (context.claims as { email?: string })?.email || "cliente@adspainel.site",
           },
           back_urls: {
-            success: `${input.origin}/dashboard?payment=success&pkg=${pkg.slug}&tokens=${pkg.tokens}`,
-            failure: `${input.origin}/dashboard?payment=failure`,
-            pending: `${input.origin}/dashboard?payment=pending`,
+            success: `${baseUrl}/dashboard?payment=success&pkg=${pkg.slug}&tokens=${pkg.tokens}`,
+            failure: `${baseUrl}/dashboard?payment=failure`,
+            pending: `${baseUrl}/dashboard?payment=pending`,
           },
-          ...(input.origin.startsWith("https://") ? { auto_return: "approved" } : {}),
+          auto_return: "approved",
+          notification_url: "https://adspainel.site/api/mercadopago/webhook",
           metadata: {
             user_id: userId,
             package_id: pkg.id,

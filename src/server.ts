@@ -47,6 +47,74 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+
+      // ── Mercado Pago Webhook ──────────────────────────────────────────────
+      if (
+        (url.pathname === "/api/mercadopago/webhook" || url.pathname === "/api/webhook/mercadopago") &&
+        request.method === "POST"
+      ) {
+        try {
+          let paymentId = url.searchParams.get("data.id") || url.searchParams.get("id");
+          if (!paymentId) {
+            try {
+              const body = (await request.clone().json()) as {
+                data?: { id?: string };
+                id?: string;
+                type?: string;
+                action?: string;
+              };
+              paymentId = body?.data?.id || body?.id;
+            } catch {}
+          }
+
+          if (paymentId) {
+            const MP_TOKEN = (process.env["MERCADO_PAGO_ACCESS_TOKEN"] || "").replace(/^['"]|['"]$/g, "");
+            if (MP_TOKEN) {
+              const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+                headers: { Authorization: `Bearer ${MP_TOKEN}` },
+              });
+              if (mpRes.ok) {
+                const payment = (await mpRes.json()) as {
+                  id: number;
+                  status: string;
+                  metadata?: { user_id?: string; tokens?: number; package_slug?: string };
+                };
+
+                if (payment.status === "approved" && payment.metadata?.user_id && payment.metadata?.tokens) {
+                  const SUPABASE_URL = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+                  const SUPABASE_KEY =
+                    process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+                    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+                    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+                  if (SUPABASE_URL && SUPABASE_KEY) {
+                    const { createClient } = await import("@supabase/supabase-js");
+                    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+                    await (supabase.rpc as any)("credit_tokens_for_payment", {
+                      p_payment_id: String(payment.id),
+                      p_user_id: payment.metadata.user_id,
+                      p_tokens: Number(payment.metadata.tokens),
+                      p_pkg_slug: payment.metadata.package_slug || "starter",
+                    });
+                    console.log(`[MercadoPago Webhook] Credited ${payment.metadata.tokens} tokens to ${payment.metadata.user_id}`);
+                  }
+                }
+              }
+            }
+          }
+          return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (webhookErr) {
+          console.error("[MercadoPago Webhook] Error:", webhookErr);
+          return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       const normalized = await normalizeCatastrophicSsrResponse(response);
