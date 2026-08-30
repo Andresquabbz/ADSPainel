@@ -126,9 +126,9 @@ function DashboardPage() {
       if (!isAdminUser && data.token_balance > 10) {
         await supabase
           .from("profiles")
-          .update({ token_balance: 10 })
+          .update({ token_balance: 7.5 })
           .eq("id", user!.id);
-        data.token_balance = 10;
+        data.token_balance = 7.5;
       }
 
       return data;

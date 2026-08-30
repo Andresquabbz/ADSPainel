@@ -225,6 +225,7 @@ export function CreateSiteWizard({ open, onOpenChange, userId: _userId }: Create
       });
 
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Site gerado com sucesso! 🎉", {
         description: `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"}.`,
       });

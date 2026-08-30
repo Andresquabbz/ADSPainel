@@ -317,7 +317,6 @@ export const generateSite = createServerFn({ method: "POST" })
         amount: -TOKEN_COST,
         balance_after: newBalance,
         description: `Geração de site: ${input.name}`,
-        metadata: { site_id: site.id, site_name: input.name, ai: !!GEMINI_KEY },
       });
     } else {
       // Record admin generation without debiting
@@ -327,7 +326,6 @@ export const generateSite = createServerFn({ method: "POST" })
         amount: 0,
         balance_after: profile.token_balance,
         description: `Geração de site (Admin ilimitado): ${input.name}`,
-        metadata: { site_id: site.id, site_name: input.name, ai: !!GEMINI_KEY },
       });
     }
 
