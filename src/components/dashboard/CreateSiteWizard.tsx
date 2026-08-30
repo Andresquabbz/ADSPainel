@@ -115,7 +115,7 @@ function guessCategory(descricao: string | null): string {
 
 // ─── Wizard component ─────────────────────────────────────────────────────────
 
-export function CreateSiteWizard({ open, onOpenChange, userId: _userId }: CreateSiteWizardProps) {
+export function CreateSiteWizard({ open, onOpenChange, userId }: CreateSiteWizardProps) {
   // step: -1 = CNPJ screen, 0/1/2 = form steps, "generating" = loading
   const [step, setStep] = useState<-1 | 0 | 1 | 2 | "generating">(-1);
 
