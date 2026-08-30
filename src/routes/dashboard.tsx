@@ -12,7 +12,6 @@ import { SiteCard } from "@/components/dashboard/SiteCard";
 import { CreateSiteWizard } from "@/components/dashboard/CreateSiteWizard";
 import { BuyTokensDialog } from "@/components/dashboard/BuyTokensDialog";
 import { creditPurchasedTokens } from "@/functions/credit-purchased-tokens";
-import { syncUserPayments } from "@/functions/sync-user-payments";
 import { TOKEN_CONFIG } from "@/config/tokens";
 
 export const Route = createFileRoute("/dashboard")({
@@ -66,26 +65,10 @@ function DashboardPage() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
-  // Auto-sync Mercado Pago payments and handle return URL
+  // Handle Mercado Pago return (success or failure)
   useEffect(() => {
     if (typeof window === "undefined" || !user) return;
 
-    // 1. Always run sync in background to check if any approved payment exists
-    syncUserPayments()
-      .then((res) => {
-        if (res?.credited) {
-          toast.success("Pagamento Confirmado! 🎉", {
-            description: `${res.tokensAdded} tokens adicionados com sucesso ao seu saldo.`,
-            duration: 6000,
-          });
-          profile.refetch();
-        }
-      })
-      .catch((e) => {
-        console.error("Erro ao sincronizar pagamentos:", e);
-      });
-
-    // 2. Handle URL return params
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     const tokens = params.get("tokens");
@@ -93,6 +76,9 @@ function DashboardPage() {
     const paymentId = params.get("payment_id") || params.get("collection_id");
 
     if (payment === "success") {
+      // Clear URL params immediately so F5 does not re-trigger
+      window.history.replaceState({}, document.title, window.location.pathname);
+
       if (tokens) {
         const numTokens = parseInt(tokens, 10);
         if (!isNaN(numTokens) && numTokens > 0) {
@@ -103,7 +89,13 @@ function DashboardPage() {
               paymentId: paymentId || undefined,
             },
           })
-            .then(() => {
+            .then((res) => {
+              if (res && !res.alreadyCredited) {
+                toast.success("Pagamento Confirmado! 🎉", {
+                  description: `${numTokens} tokens adicionados com sucesso ao seu saldo.`,
+                  duration: 5000,
+                });
+              }
               profile.refetch();
             })
             .catch((e) => {
@@ -111,12 +103,11 @@ function DashboardPage() {
             });
         }
       }
-      window.history.replaceState({}, document.title, window.location.pathname);
     } else if (payment === "failure") {
+      window.history.replaceState({}, document.title, window.location.pathname);
       toast.error("Pagamento não concluído.", {
         description: "Você pode tentar novamente quando desejar.",
       });
-      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [user]);
 
