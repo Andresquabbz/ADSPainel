@@ -122,6 +122,14 @@ function DashboardPage() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+      const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
+      if (!isAdminUser && data.token_balance > 10) {
+        await supabase
+          .from("profiles")
+          .update({ token_balance: 10 })
+          .eq("id", user!.id);
+        data.token_balance = 10;
+      }
 
       return data;
     },
