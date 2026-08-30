@@ -12,6 +12,7 @@ import { SiteCard } from "@/components/dashboard/SiteCard";
 import { CreateSiteWizard } from "@/components/dashboard/CreateSiteWizard";
 import { BuyTokensDialog } from "@/components/dashboard/BuyTokensDialog";
 import { creditPurchasedTokens } from "@/functions/credit-purchased-tokens";
+import { checkUserApprovedPayments } from "@/functions/check-user-approved-payments";
 import { TOKEN_CONFIG } from "@/config/tokens";
 
 export const Route = createFileRoute("/dashboard")({
@@ -109,6 +110,50 @@ function DashboardPage() {
         description: "Você pode tentar novamente quando desejar.",
       });
     }
+
+    // Background sync: automatically credit any approved Mercado Pago Pix payment for this user
+    checkUserApprovedPayments().then(async (res) => {
+      if (!res?.approvedPayments?.length) return;
+      for (const p of res.approvedPayments) {
+        const { data: existing } = await supabase
+          .from("token_transactions")
+          .select("id")
+          .eq("user_id", user.id)
+          .ilike("description", `%${p.paymentId}%`)
+          .maybeSingle();
+
+        if (!existing) {
+          const { data: curProf } = await supabase
+            .from("profiles")
+            .select("token_balance")
+            .eq("id", user.id)
+            .single();
+
+          const currentBal = Number(curProf?.token_balance) || 0;
+          const newBal = currentBal + p.tokens;
+
+          await supabase
+            .from("profiles")
+            .update({ token_balance: newBal })
+            .eq("id", user.id);
+
+          await supabase.from("token_transactions").insert({
+            user_id: user.id,
+            type: "purchase",
+            amount: p.tokens,
+            balance_after: newBal,
+            description: `Compra Mercado Pago Pix (${p.tokens} tokens - Ref: ${p.paymentId})`,
+          });
+
+          toast.success("Pagamento Confirmado! 🎉", {
+            description: `${p.tokens} tokens adicionados com sucesso ao seu saldo.`,
+            duration: 5000,
+          });
+
+          profile.refetch();
+        }
+      }
+    }).catch(console.error);
   }, [user]);
 
   const profile = useQuery({
@@ -124,17 +169,6 @@ function DashboardPage() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-
-      const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
-      // The client has generated all 4 sites (4 * 2.5 = 10 tokens consumed -> 0 tokens remaining):
-      if (!isAdminUser && data.token_balance > 0) {
-        await supabase
-          .from("profiles")
-          .update({ token_balance: 0 })
-          .eq("id", user!.id);
-        data.token_balance = 0;
-      }
-
       return data;
     },
   });
