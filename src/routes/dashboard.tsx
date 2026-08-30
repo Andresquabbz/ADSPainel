@@ -31,17 +31,17 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 const PLAN_LIMITS: Record<string, number> = {
-  free: 50,
-  starter: 300,
-  pro: 1000,
-  agency: 3000,
+  starter: 10,
+  pro: 25,
+  business: 50,
+  agency: 100,
 };
 
 const PLAN_MAX_SITES: Record<string, number> = {
-  free: 1,
-  starter: 5,
-  pro: 15,
-  agency: 999,
+  starter: 4,
+  pro: 10,
+  business: 20,
+  agency: 40,
 };
 
 const TX_TYPE_LABEL: Record<string, string> = {
