@@ -304,13 +304,24 @@ export const generateSite = createServerFn({ method: "POST" })
 
     // ── 5. Debit tokens ──────────────────────────────────────────────────────
     if (!isAdmin) {
-      const currentBalance = Number(profile.token_balance) || 0;
+      // Re-fetch latest token balance immediately before update to avoid any stale data
+      const { data: freshProfile } = await supabase
+        .from("profiles")
+        .select("token_balance")
+        .eq("id", userId)
+        .single();
+
+      const currentBalance = Number(freshProfile?.token_balance ?? profile.token_balance) || 0;
       const newBalance = Math.max(0, currentBalance - TOKEN_COST);
 
-      await supabase
+      const { error: updateErr } = await supabase
         .from("profiles")
         .update({ token_balance: newBalance })
         .eq("id", userId);
+
+      if (updateErr) {
+        console.error("[generate-site] Error updating balance:", updateErr);
+      }
 
       await supabase.from("token_transactions").insert({
         user_id: userId,
