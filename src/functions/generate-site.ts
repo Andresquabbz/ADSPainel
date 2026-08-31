@@ -145,10 +145,10 @@ export const generateSite = createServerFn({ method: "POST" })
     const { TOKEN_CONFIG } = await import("@/config/tokens");
     const TOKEN_COST = TOKEN_CONFIG.tokensPerSite; // 2.5 tokens per site
 
-    // ── 1. Validate token balance ────────────────────────────────────────────
+    // ── 1. Validate token balance (2.5 tokens per site) ───────────────────────
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("token_balance, email")
+      .select("token_balance")
       .eq("id", userId)
       .single();
 
@@ -156,27 +156,22 @@ export const generateSite = createServerFn({ method: "POST" })
       throw new Error("Perfil não encontrado.");
     }
 
-    const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
-    const userEmail = (profile.email || (context.claims as { email?: string })?.email || "").toLowerCase();
-    const isAdmin = ADMIN_EMAILS.includes(userEmail);
-
-    if (!isAdmin && profile.token_balance < TOKEN_COST) {
+    const currentBalance = Number(profile.token_balance) || 0;
+    if (currentBalance < TOKEN_COST) {
       throw new Error(
-        `Saldo insuficiente. Você precisa de ${TOKEN_COST} tokens para gerar um site (saldo atual: ${profile.token_balance}).`
+        `Saldo insuficiente. Você precisa de ${TOKEN_COST.toString().replace(".", ",")} tokens para gerar um site (saldo atual: ${currentBalance.toString().replace(".", ",")}). Recarregue seu saldo para continuar.`
       );
     }
 
     // ── Rate Limiting (Anti-Abuse / DoS) ──────────────────────────────────────
-    if (!isAdmin) {
-      const rateCheck = checkRateLimit(`gen:${userId}`, {
-        maxRequests: 4,
-        windowMs: 60000, // 4 requests per minute
-      });
-      if (!rateCheck.allowed) {
-        throw new Error(
-          `Muitas gerações simultâneas. Por favor, aguarde ${rateCheck.resetInSeconds} segundos antes de gerar outro site.`
-        );
-      }
+    const rateCheck = checkRateLimit(`gen:${userId}`, {
+      maxRequests: 5,
+      windowMs: 60000,
+    });
+    if (!rateCheck.allowed) {
+      throw new Error(
+        `Muitas gerações simultâneas. Por favor, aguarde ${rateCheck.resetInSeconds} segundos antes de gerar outro site.`
+      );
     }
 
     // ── 2. Call Gemini (or fallback to template) ─────────────────────────────
@@ -306,27 +301,29 @@ export const generateSite = createServerFn({ method: "POST" })
       console.error("[generate-site] page insert error:", pageError.message);
     }
 
-    // ── 5. Debit tokens ──────────────────────────────────────────────────────
-    if (!isAdmin) {
-      // Re-fetch latest token balance immediately before update to avoid any stale data
-      const { data: freshProfile } = await supabase
-        .from("profiles")
-        .select("token_balance")
-        .eq("id", userId)
-        .single();
+    // ── 5. Debit 2.5 tokens from user balance ────────────────────────────────
+    const { data: freshProfile } = await supabase
+      .from("profiles")
+      .select("token_balance")
+      .eq("id", userId)
+      .single();
 
-      const currentBalance = Number(freshProfile?.token_balance ?? profile.token_balance) || 0;
-      const newBalance = Math.max(0, currentBalance - TOKEN_COST);
+    const currentBal = Number(freshProfile?.token_balance ?? currentBalance) || 0;
+    const newBalance = Math.max(0, currentBal - TOKEN_COST);
 
-      const { error: updateErr } = await supabase
-        .from("profiles")
-        .update({ token_balance: newBalance })
-        .eq("id", userId);
+    const { error: updateErr } = await supabase
+      .from("profiles")
+      .update({
+        token_balance: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
 
-      if (updateErr) {
-        console.error("[generate-site] Error updating balance:", updateErr);
-      }
+    if (updateErr) {
+      console.error("[generate-site] Error updating balance:", updateErr);
+    }
 
+    try {
       await supabase.from("token_transactions").insert({
         user_id: userId,
         type: "generation",
@@ -334,17 +331,11 @@ export const generateSite = createServerFn({ method: "POST" })
         balance_after: newBalance,
         description: `Geração de site: ${input.name}`,
       });
-      console.log(`[generate-site] Debited ${TOKEN_COST} tokens from user ${userId}. Balance: ${currentBalance} -> ${newBalance}`);
-    } else {
-      // Record admin generation without debiting
-      await supabase.from("token_transactions").insert({
-        user_id: userId,
-        type: "admin",
-        amount: 0,
-        balance_after: profile.token_balance,
-        description: `Geração de site (Admin ilimitado): ${input.name}`,
-      });
+    } catch (txErr) {
+      console.error("[generate-site] Transaction log error (ignored):", txErr);
     }
+
+    console.log(`[generate-site] Debited ${TOKEN_COST} tokens from user ${userId}. Balance: ${currentBal} -> ${newBalance}`);
 
     // ── 6. Return result ─────────────────────────────────────────────────────
     return {

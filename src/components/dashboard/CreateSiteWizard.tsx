@@ -32,6 +32,7 @@ interface CreateSiteWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
+  onOpenBuyTokens?: () => void;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -116,7 +117,12 @@ function guessCategory(descricao: string | null): string {
 
 // ─── Wizard component ─────────────────────────────────────────────────────────
 
-export function CreateSiteWizard({ open, onOpenChange, userId }: CreateSiteWizardProps) {
+export function CreateSiteWizard({
+  open,
+  onOpenChange,
+  userId,
+  onOpenBuyTokens,
+}: CreateSiteWizardProps) {
   // step: -1 = CNPJ screen, 0/1/2 = form steps, "generating" = loading
   const [step, setStep] = useState<-1 | 0 | 1 | 2 | "generating">(-1);
 
@@ -229,42 +235,7 @@ export function CreateSiteWizard({ open, onOpenChange, userId }: CreateSiteWizar
         },
       });
 
-      // Deduct 2.5 tokens from the user profile if not admin
-      const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
-      const { data: curProf } = await supabase
-        .from("profiles")
-        .select("token_balance, email")
-        .eq("id", userId)
-        .maybeSingle();
-
-      const userEmail = (curProf?.email || "").toLowerCase();
-      if (!ADMIN_EMAILS.includes(userEmail) && curProf) {
-        const currentBal = Number(curProf.token_balance) || 0;
-        const newBal = Math.max(0, currentBal - 2.5);
-        const { error: updErr } = await supabase
-          .from("profiles")
-          .update({ token_balance: newBal })
-          .eq("id", userId);
-
-        if (updErr) {
-          console.error("[Wizard] Failed to update balance:", updErr);
-        } else {
-          console.log(`[Wizard] Debited 2.5 tokens: ${currentBal} -> ${newBal}`);
-        }
-
-        try {
-          await supabase.from("token_transactions").insert({
-            user_id: userId,
-            type: "generation",
-            amount: -2.5,
-            balance_after: newBal,
-            description: `Geração de site: ${data.name.trim()}`,
-          });
-        } catch (txErr) {
-          console.error("[Wizard] Transaction log error (ignored):", txErr);
-        }
-      }
-
+      // Update query cache immediately so balance updates in UI without waiting
       queryClient.setQueryData(["profile", userId], (old: any) => {
         if (!old) return old;
         return {
@@ -275,16 +246,23 @@ export function CreateSiteWizard({ open, onOpenChange, userId }: CreateSiteWizar
 
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["token_transactions"] });
+
       toast.success("Site gerado com sucesso! 🎉", {
-        description: `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"}.`,
+        description: `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"}. Foram debitados 2,5 tokens.`,
       });
       handleClose();
       navigate({ to: "/editor/$siteId", params: { siteId: result.siteId } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erro ao gerar o site.";
       toast.error(msg);
-      // Return to the last form step so user can retry
-      setStep(2);
+      if (msg.toLowerCase().includes("saldo insuficiente")) {
+        handleClose();
+        onOpenBuyTokens?.();
+      } else {
+        // Return to the last form step so user can retry
+        setStep(2);
+      }
     }
   }
 

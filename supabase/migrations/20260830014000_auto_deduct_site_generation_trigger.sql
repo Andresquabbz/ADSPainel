@@ -8,10 +8,7 @@ BEGIN
   -- Get user email to skip admins
   SELECT email INTO v_user_email FROM auth.users WHERE id = NEW.user_id;
 
-  -- Super admin does not consume tokens
-  IF LOWER(COALESCE(v_user_email, '')) = 'andre.jesus.rocha@gmail.com' THEN
-    RETURN NEW;
-  END IF;
+  -- Deduct 2.5 tokens for all users on site creation
 
   -- Get current balance
   SELECT token_balance INTO v_current_bal FROM public.profiles WHERE id = NEW.user_id;
