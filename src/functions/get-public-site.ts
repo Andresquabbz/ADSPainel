@@ -51,9 +51,29 @@ export const getPublicSite = createServerFn({ method: "GET" })
       .eq("site_id", site.id)
       .order("position");
 
+    let finalPages = pages || [];
+    const hasAnySection = finalPages.some(
+      (p) => Array.isArray(p.sections) && p.sections.length > 0
+    );
+    if (!hasAnySection && site) {
+      const backupSections = (site.content as Record<string, unknown>)?.["sections"];
+      if (Array.isArray(backupSections) && backupSections.length > 0) {
+        finalPages = [
+          {
+            id: "default-page",
+            title: "Página inicial",
+            path: "/",
+            position: 0,
+            sections: backupSections,
+            seo: (site.seo as Record<string, unknown>) || {},
+          } as any,
+        ];
+      }
+    }
+
     return {
       site,
-      pages: pages || [],
+      pages: finalPages,
       isPublished: site.status === "published",
     };
   });

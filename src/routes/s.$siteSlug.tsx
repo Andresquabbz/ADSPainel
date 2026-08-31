@@ -228,6 +228,14 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
     }
   }
 
+  // Redundancy fallback: if pages had no sections, read from site.content.sections
+  if (allSections.length === 0 && site) {
+    const backupSecs = (site.content as Record<string, unknown>)?.["sections"];
+    if (Array.isArray(backupSecs) && backupSecs.length > 0) {
+      allSections.push(...(backupSecs as AnySection[]));
+    }
+  }
+
   return (
     <div
       className="min-h-screen bg-white text-slate-900 flex flex-col"

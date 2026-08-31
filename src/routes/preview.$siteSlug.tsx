@@ -468,8 +468,16 @@ function PreviewPage() {
   const allSections: AnySection[] = [];
   if (pages && pages.length > 0) {
     for (const page of pages) {
-      const secs = Array.isArray(page.sections) ? page.sections as AnySection[] : [];
+      const secs = Array.isArray(page.sections) ? (page.sections as AnySection[]) : [];
       allSections.push(...secs);
+    }
+  }
+
+  // Redundancy fallback: if pages had no sections, read from site.content.sections
+  if (allSections.length === 0 && site) {
+    const backupSecs = (site.content as Record<string, unknown>)?.["sections"];
+    if (Array.isArray(backupSecs) && backupSecs.length > 0) {
+      allSections.push(...(backupSecs as AnySection[]));
     }
   }
 

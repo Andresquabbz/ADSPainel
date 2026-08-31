@@ -8,6 +8,7 @@ import { EditorHeader, type ViewportMode } from "@/components/editor/EditorHeade
 import { EditorSidebar } from "@/components/editor/EditorSidebar";
 import { LivePreviewCanvas } from "@/components/editor/LivePreviewCanvas";
 import type { AnySection } from "@/components/editor/AddSectionModal";
+import { generatePageSections } from "@/lib/content-generator";
 
 export const Route = createFileRoute("/editor/$siteId")({
   component: EditorPage,
@@ -33,7 +34,7 @@ interface SiteRow {
   state: string | null;
   address: string | null;
   status: string;
-  content: { cnpj?: string | null; generated?: boolean } | null;
+  content: { cnpj?: string | null; generated?: boolean; sections?: AnySection[]; [key: string]: any } | null;
 }
 
 interface SitePageRow {
@@ -41,8 +42,8 @@ interface SitePageRow {
   site_id: string;
   title: string;
   path: string;
-  sections: unknown;
-  seo: { title?: string; description?: string } | null;
+  sections: AnySection[] | unknown;
+  seo: { title?: string; description?: string; facebook_domain_verification?: string | null } | null;
   position: number;
 }
 
@@ -122,9 +123,9 @@ function EditorPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Sync loaded site data into draft state once loaded
+  // Sync loaded site data into draft state once both site AND page are loaded
   useEffect(() => {
-    if (site && !isInitialized) {
+    if (site && !pageLoading && !isInitialized) {
       setName(site.name || "");
       setBusinessName(site.business_name || "");
       setCnpj(site.content?.cnpj || "");
@@ -141,27 +142,48 @@ function EditorPage() {
       const siteContent = site.content as {
         facebook_domain_verification?: string;
         meta_tag?: string;
+        sections?: AnySection[];
       } | null;
+
       setMetaVerificationTag(
         siteContent?.facebook_domain_verification ||
           siteContent?.meta_tag ||
           ""
       );
 
-      if (page) {
-        const initialSections = Array.isArray(page.sections)
-          ? (page.sections as AnySection[])
-          : [];
-        setSections(initialSections);
-        setSeoTitle(page.seo?.title || `${site.name} — ${site.category || ""}`);
-        setSeoDescription(
-          page.seo?.description || `${site.business_name}. Entre em contato.`
-        );
+      // Safe multi-tier fallback to NEVER lose or clear sections:
+      // 1. From page.sections if it's an array with items
+      // 2. From site.content.sections (redundant backup)
+      // 3. Fallback to template generator if site had zero sections
+      let loadedSections: AnySection[] = [];
+      if (page && Array.isArray(page.sections) && page.sections.length > 0) {
+        loadedSections = page.sections as AnySection[];
+      } else if (siteContent?.sections && Array.isArray(siteContent.sections) && siteContent.sections.length > 0) {
+        loadedSections = siteContent.sections as AnySection[];
+      } else {
+        loadedSections = generatePageSections({
+          name: site.name || "Meu Negócio",
+          business_name: site.business_name || site.name || "Minha Empresa",
+          category: site.category ?? null,
+          goal: site.goal ?? null,
+          phone: site.phone ?? null,
+          whatsapp: site.whatsapp ?? null,
+          email: site.email ?? null,
+          city: site.city ?? null,
+          state: site.state ?? null,
+          style: site.style ?? null,
+        }) as AnySection[];
       }
+
+      setSections(loadedSections);
+      setSeoTitle(page?.seo?.title || `${site.name} — ${site.category || ""}`);
+      setSeoDescription(
+        page?.seo?.description || `${site.business_name}. Entre em contato.`
+      );
 
       setIsInitialized(true);
     }
-  }, [site, page, isInitialized]);
+  }, [site, page, pageLoading, isInitialized]);
 
   // Redirect if unauthenticated
   useEffect(() => {
@@ -174,7 +196,10 @@ function EditorPage() {
   const hasUnsavedChanges = useMemo(() => {
     if (!site || !isInitialized) return false;
 
-    const originalSections = Array.isArray(page?.sections) ? page?.sections : [];
+    const originalSections =
+      (Array.isArray(page?.sections) && page.sections.length > 0
+        ? page.sections
+        : (site.content as Record<string, unknown>)?.["sections"]) || [];
     const sectionsChanged =
       JSON.stringify(sections) !== JSON.stringify(originalSections);
 
@@ -226,7 +251,14 @@ function EditorPage() {
     if (!site) return;
     setIsSaving(true);
     try {
-      // 1. Update site row
+      if (sections.length === 0) {
+        toast.error("O site precisa ter pelo menos uma seção.");
+        setIsSaving(false);
+        return;
+      }
+
+      // 1. Update site row and persist redundant copy of sections
+      const existingContent = (site.content as Record<string, unknown>) || {};
       const { error: siteUpdateError } = await supabase
         .from("sites")
         .update({
@@ -242,9 +274,10 @@ function EditorPage() {
           state: state.trim() || null,
           address: address.trim() || null,
           content: {
-            ...site.content,
+            ...existingContent,
             cnpj: cnpj.trim() || null,
             facebook_domain_verification: metaVerificationTag.trim() || null,
+            sections: sections as any,
           },
         })
         .eq("id", site.id);
@@ -256,7 +289,7 @@ function EditorPage() {
         const { error: pageUpdateError } = await supabase
           .from("site_pages")
           .update({
-            sections: sections,
+            sections: sections as any,
             seo: {
               title: seoTitle.trim(),
               description: seoDescription.trim(),
@@ -275,7 +308,7 @@ function EditorPage() {
             title: "Página inicial",
             path: "/",
             position: 0,
-            sections: sections,
+            sections: sections as any,
             seo: {
               title: seoTitle.trim(),
               description: seoDescription.trim(),

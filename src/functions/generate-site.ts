@@ -277,6 +277,7 @@ export const generateSite = createServerFn({ method: "POST" })
           cnpj: input.cnpj ?? null,
           generated: true,
           ai: !!GEMINI_KEY,
+          sections: sections as any,
         },
       })
       .select("id")
