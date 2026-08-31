@@ -145,10 +145,10 @@ export const generateSite = createServerFn({ method: "POST" })
     const { TOKEN_CONFIG } = await import("@/config/tokens");
     const TOKEN_COST = TOKEN_CONFIG.tokensPerSite; // 2.5 tokens per site
 
-    // ── 1. Validate token balance (2.5 tokens per site) ───────────────────────
+    // ── 1. Validate token balance (2.5 tokens per site, exempt super admin) ──
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("token_balance")
+      .select("token_balance, email")
       .eq("id", userId)
       .single();
 
@@ -156,22 +156,28 @@ export const generateSite = createServerFn({ method: "POST" })
       throw new Error("Perfil não encontrado.");
     }
 
+    const SUPER_ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
+    const userEmail = (profile.email || (context.claims as { email?: string })?.email || "").toLowerCase();
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(userEmail);
+
     const currentBalance = Number(profile.token_balance) || 0;
-    if (currentBalance < TOKEN_COST) {
+    if (!isSuperAdmin && currentBalance < TOKEN_COST) {
       throw new Error(
         `Saldo insuficiente. Você precisa de ${TOKEN_COST.toString().replace(".", ",")} tokens para gerar um site (saldo atual: ${currentBalance.toString().replace(".", ",")}). Recarregue seu saldo para continuar.`
       );
     }
 
     // ── Rate Limiting (Anti-Abuse / DoS) ──────────────────────────────────────
-    const rateCheck = checkRateLimit(`gen:${userId}`, {
-      maxRequests: 5,
-      windowMs: 60000,
-    });
-    if (!rateCheck.allowed) {
-      throw new Error(
-        `Muitas gerações simultâneas. Por favor, aguarde ${rateCheck.resetInSeconds} segundos antes de gerar outro site.`
-      );
+    if (!isSuperAdmin) {
+      const rateCheck = checkRateLimit(`gen:${userId}`, {
+        maxRequests: 5,
+        windowMs: 60000,
+      });
+      if (!rateCheck.allowed) {
+        throw new Error(
+          `Muitas gerações simultâneas. Por favor, aguarde ${rateCheck.resetInSeconds} segundos antes de gerar outro site.`
+        );
+      }
     }
 
     // ── 2. Call Gemini (or fallback to template) ─────────────────────────────
@@ -301,41 +307,45 @@ export const generateSite = createServerFn({ method: "POST" })
       console.error("[generate-site] page insert error:", pageError.message);
     }
 
-    // ── 5. Debit 2.5 tokens from user balance ────────────────────────────────
-    const { data: freshProfile } = await supabase
-      .from("profiles")
-      .select("token_balance")
-      .eq("id", userId)
-      .single();
+    // ── 5. Debit 2.5 tokens (exempt super admin) ────────────────────────────
+    if (!isSuperAdmin) {
+      const { data: freshProfile } = await supabase
+        .from("profiles")
+        .select("token_balance")
+        .eq("id", userId)
+        .single();
 
-    const currentBal = Number(freshProfile?.token_balance ?? currentBalance) || 0;
-    const newBalance = Math.max(0, currentBal - TOKEN_COST);
+      const currentBal = Number(freshProfile?.token_balance ?? currentBalance) || 0;
+      const newBalance = Math.max(0, currentBal - TOKEN_COST);
 
-    const { error: updateErr } = await supabase
-      .from("profiles")
-      .update({
-        token_balance: newBalance,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({
+          token_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
 
-    if (updateErr) {
-      console.error("[generate-site] Error updating balance:", updateErr);
+      if (updateErr) {
+        console.error("[generate-site] Error updating balance:", updateErr);
+      }
+
+      try {
+        await supabase.from("token_transactions").insert({
+          user_id: userId,
+          type: "generation",
+          amount: -TOKEN_COST,
+          balance_after: newBalance,
+          description: `Geração de site: ${input.name}`,
+        });
+      } catch (txErr) {
+        console.error("[generate-site] Transaction log error (ignored):", txErr);
+      }
+
+      console.log(`[generate-site] Debited ${TOKEN_COST} tokens from user ${userId}. Balance: ${currentBal} -> ${newBalance}`);
+    } else {
+      console.log(`[generate-site] Super admin generation for ${userEmail}: tokens infinitos (sem débito).`);
     }
-
-    try {
-      await supabase.from("token_transactions").insert({
-        user_id: userId,
-        type: "generation",
-        amount: -TOKEN_COST,
-        balance_after: newBalance,
-        description: `Geração de site: ${input.name}`,
-      });
-    } catch (txErr) {
-      console.error("[generate-site] Transaction log error (ignored):", txErr);
-    }
-
-    console.log(`[generate-site] Debited ${TOKEN_COST} tokens from user ${userId}. Balance: ${currentBal} -> ${newBalance}`);
 
     // ── 6. Return result ─────────────────────────────────────────────────────
     return {

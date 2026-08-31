@@ -192,15 +192,19 @@ function DashboardPage() {
   const isAdmin = ADMIN_EMAILS.includes(userEmail);
 
   const rawPlanSlug = profile.data?.plan_slug ?? "avulso";
-  const planSlug = rawPlanSlug === "free" || rawPlanSlug === "avulso" ? "Sem Plano Ativo" : rawPlanSlug;
+  const planSlug = isAdmin
+    ? "Admin (Ilimitado)"
+    : (rawPlanSlug === "free" || rawPlanSlug === "avulso" ? "Sem Plano Ativo" : rawPlanSlug);
   const tokenBalance = Number(profile.data?.token_balance) || 0;
   const siteCount = sites.data?.length ?? 0;
-  const tokenPct = Math.min(100, Math.round((tokenBalance / 50) * 100));
+  const tokenPct = isAdmin ? 100 : Math.min(100, Math.round((tokenBalance / 50) * 100));
 
-  // Members can create unlimited sites as long as they have tokens (2.5 tokens per site)
-  const canCreateSite = tokenBalance >= TOKEN_CONFIG.minTokensToCreate;
+  // Members can create unlimited sites as long as they have tokens (2.5 tokens per site), super admin is unlimited
+  const canCreateSite = isAdmin || tokenBalance >= TOKEN_CONFIG.minTokensToCreate;
 
-  const formattedTokenBalance = `${tokenBalance.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 1 })} tokens`;
+  const formattedTokenBalance = isAdmin
+    ? "∞ Tokens (Ilimitado)"
+    : `${tokenBalance.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 1 })} tokens`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -218,7 +222,7 @@ function DashboardPage() {
             <button
               onClick={() => setBuyTokensOpen(true)}
               className="label-mono hidden items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground sm:flex"
-              title="Clique para adicionar mais tokens"
+              title={isAdmin ? "Super Admin com tokens infinitos" : "Clique para adicionar mais tokens"}
             >
               <Coins className="h-3 w-3 text-primary" />
               {formattedTokenBalance}
@@ -236,7 +240,7 @@ function DashboardPage() {
               variant={isAdmin ? "default" : "secondary"}
               className="hidden font-mono text-[10px] uppercase tracking-widest sm:inline-flex"
             >
-              {isAdmin ? "ADMIN" : planSlug}
+              {isAdmin ? "SUPER ADMIN" : planSlug}
             </Badge>
             <Button variant="ghost" size="sm" onClick={() => signOut()}>
               Sair
@@ -256,19 +260,21 @@ function DashboardPage() {
               Olá, {profile.data?.full_name || user.email?.split("@")[0]}
               {isAdmin && (
                 <span className="ml-2 text-xs font-mono font-bold text-primary border border-primary/40 px-2 py-0.5 rounded-full align-middle">
-                  ADMINISTRADOR
+                  SUPER ADMIN (TOKENS INFINITOS)
                 </span>
               )}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Crie, edite e publique quantos sites quiser enquanto tiver tokens disponíveis (2,5 tokens por site).
+              {isAdmin
+                ? "Acesso Super Admin com tokens infinitos e criação liberada sem restrições."
+                : "Crie, edite e publique quantos sites quiser enquanto tiver tokens disponíveis (2,5 tokens por site)."}
             </p>
           </div>
           <Button
             variant="hero"
             size="lg"
             onClick={() => {
-              if (tokenBalance < TOKEN_CONFIG.minTokensToCreate) {
+              if (!canCreateSite) {
                 toast.warning("Saldo insuficiente para criar site", {
                   description: `Você possui ${tokenBalance.toLocaleString("pt-BR")} tokens. É necessário ter pelo menos 2,5 tokens para gerar um site. Escolha um pacote abaixo para recarregar.`,
                   duration: 6000,
@@ -291,29 +297,45 @@ function DashboardPage() {
             <div>
               <div className="flex items-center justify-between">
                 <p className="label-mono text-muted-foreground">Tokens disponíveis</p>
-                <span className="font-mono text-[11px] text-primary/80 font-bold">
-                  2,5 tokens / site
-                </span>
+                {isAdmin ? (
+                  <span className="font-mono text-[11px] text-emerald-500 font-bold">
+                    Ilimitado (∞)
+                  </span>
+                ) : (
+                  <span className="font-mono text-[11px] text-primary/80 font-bold">
+                    2,5 tokens / site
+                  </span>
+                )}
               </div>
               <p className="mt-2 text-2xl font-extrabold tracking-tight">
-                <span>
-                  {tokenBalance.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
-                  <span className="ml-1.5 text-sm font-normal text-muted-foreground">tokens</span>
-                </span>
+                {isAdmin ? (
+                  <span className="text-primary font-mono text-3xl">∞</span>
+                ) : (
+                  <span>
+                    {tokenBalance.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
+                    <span className="ml-1.5 text-sm font-normal text-muted-foreground">tokens</span>
+                  </span>
+                )}
               </p>
               <div className="mt-3 h-1.5 w-full bg-muted overflow-hidden">
                 <div
-                  className={`h-full transition-all ${tokenBalance >= 2.5 ? "bg-primary" : "bg-muted-foreground/30"}`}
+                  className={`h-full transition-all ${tokenBalance >= 2.5 || isAdmin ? "bg-primary" : "bg-muted-foreground/30"}`}
                   style={{ width: `${tokenPct}%` }}
                 />
               </div>
             </div>
-            <button
-              onClick={() => setBuyTokensOpen(true)}
-              className="label-mono mt-3 text-primary hover:underline text-xs text-left inline-block"
-            >
-              Comprar tokens →
-            </button>
+            {isAdmin ? (
+              <p className="label-mono mt-3 text-emerald-500 text-xs font-bold">
+                Tokens Infinitos Ativos
+              </p>
+            ) : (
+              <button
+                onClick={() => setBuyTokensOpen(true)}
+                className="label-mono mt-3 text-primary hover:underline text-xs text-left inline-block"
+              >
+                Comprar tokens →
+              </button>
+            )}
           </div>
 
           {/* Sites */}
@@ -333,7 +355,7 @@ function DashboardPage() {
             </div>
             {canCreateSite ? (
               <p className="label-mono mt-3 text-emerald-500 text-xs">
-                Criação liberada por tokens
+                {isAdmin ? "Criação ilimitada liberada (Super Admin)" : "Criação liberada por tokens"}
               </p>
             ) : (
               <p className="label-mono mt-3 text-amber-500 text-xs font-bold">

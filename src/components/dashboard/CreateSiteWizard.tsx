@@ -235,21 +235,33 @@ export function CreateSiteWizard({
         },
       });
 
-      // Update query cache immediately so balance updates in UI without waiting
-      queryClient.setQueryData(["profile", userId], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          token_balance: Math.max(0, (Number(old.token_balance) || 0) - 2.5),
-        };
-      });
+      const SUPER_ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
+      const { data: curProf } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const isSuperAdmin = SUPER_ADMIN_EMAILS.includes((curProf?.email || "").toLowerCase());
+
+      if (!isSuperAdmin) {
+        queryClient.setQueryData(["profile", userId], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            token_balance: Math.max(0, (Number(old.token_balance) || 0) - 2.5),
+          };
+        });
+      }
 
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
       await queryClient.invalidateQueries({ queryKey: ["token_transactions"] });
 
       toast.success("Site gerado com sucesso! 🎉", {
-        description: `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"}. Foram debitados 2,5 tokens.`,
+        description: isSuperAdmin
+          ? `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"} (Super Admin: tokens infinitos).`
+          : `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"}. Foram debitados 2,5 tokens.`,
       });
       handleClose();
       navigate({ to: "/editor/$siteId", params: { siteId: result.siteId } });
