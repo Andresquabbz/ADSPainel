@@ -55,21 +55,25 @@ export function SectionList({
   const [addModalOpen, setAddModalOpen] = useState(false);
 
   function moveUp(index: number) {
-    if (index === 0) return;
+    if (index <= 0 || index >= sections.length) return;
     const next = [...sections];
-    const temp = next[index - 1];
-    next[index - 1] = next[index];
-    next[index] = temp;
+    const prevItem = next[index - 1];
+    const currItem = next[index];
+    if (!prevItem || !currItem) return;
+    next[index - 1] = currItem;
+    next[index] = prevItem;
     onChange(next);
     if (selectedSectionIndex === index) onSelectSection(index - 1);
   }
 
   function moveDown(index: number) {
-    if (index === sections.length - 1) return;
+    if (index < 0 || index >= sections.length - 1) return;
     const next = [...sections];
-    const temp = next[index + 1];
-    next[index + 1] = next[index];
-    next[index] = temp;
+    const nextItem = next[index + 1];
+    const currItem = next[index];
+    if (!nextItem || !currItem) return;
+    next[index + 1] = currItem;
+    next[index] = nextItem;
     onChange(next);
     if (selectedSectionIndex === index) onSelectSection(index + 1);
   }

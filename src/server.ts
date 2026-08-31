@@ -64,7 +64,7 @@ export default {
                 type?: string;
                 action?: string;
               };
-              paymentId = body?.data?.id || body?.id;
+              paymentId = body?.data?.id || body?.id || null;
             } catch {}
           }
 

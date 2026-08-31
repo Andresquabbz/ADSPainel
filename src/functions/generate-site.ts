@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generatePageSections } from "@/lib/content-generator";
 import { checkRateLimit } from "@/lib/rate-limiter";
+import { findAvailableSlug } from "@/lib/slug";
 
 // ─── Input schema (Strict & Sanitized) ────────────────────────────────────────
 
@@ -247,8 +248,10 @@ export const generateSite = createServerFn({ method: "POST" })
     }
 
     // ── 3. Create the site record ────────────────────────────────────────────
-    const baseSlug = slugify(input.name || input.business_name);
-    const uniqueSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
+    const uniqueSlug = await findAvailableSlug(
+      supabase,
+      input.name || input.business_name
+    );
 
     const { data: site, error: siteError } = await supabase
       .from("sites")
@@ -290,7 +293,7 @@ export const generateSite = createServerFn({ method: "POST" })
       title: "Página inicial",
       path: "/",
       position: 0,
-      sections: sections,
+      sections: sections as any,
       seo: seoData ?? {
         title: `${input.name} — ${input.category ?? ""}${input.city ? ` em ${input.city}` : ""}`,
         description: `${input.business_name}${input.city ? ` em ${input.city}` : ""}. Entre em contato.`,

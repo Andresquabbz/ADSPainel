@@ -21,7 +21,8 @@ export const createMercadoPagoCheckout = createServerFn({ method: "POST" })
     // 1. Fetch package details (from central TOKEN_CONFIG or database)
     const configuredPkg = getPackageBySlugOrId(input.packageSlug) || getPackageBySlugOrId(input.packageId);
 
-    let pkg = configuredPkg ? { ...configuredPkg } : null;
+    let pkg: { id: string; name: string; slug: string; tokens: number; price_cents: number } | null =
+      configuredPkg ? { ...configuredPkg } : null;
     if (!pkg) {
       const { data: dbPkg } = await supabase
         .from("token_packages")

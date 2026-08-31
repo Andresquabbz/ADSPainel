@@ -22,9 +22,12 @@ import {
   RefreshCw,
   Trash2,
   ShieldCheck,
+  Pencil,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { subdomainFor, APP_CONFIG } from "@/config/app";
 import { supabase } from "@/integrations/supabase/client";
+import { cleanSlug, validateSlug } from "@/lib/slug";
 
 interface DomainSettingsDialogProps {
   open: boolean;
@@ -33,6 +36,7 @@ interface DomainSettingsDialogProps {
   userId?: string;
   siteSlug: string;
   siteName: string;
+  onSlugUpdated?: (newSlug: string) => void;
 }
 
 interface DomainRecord {
@@ -52,7 +56,15 @@ export function DomainSettingsDialog({
   userId,
   siteSlug,
   siteName,
+  onSlugUpdated,
 }: DomainSettingsDialogProps) {
+  const queryClient = useQueryClient();
+  const [currentSlug, setCurrentSlug] = useState(siteSlug);
+  const [isEditingSlug, setIsEditingSlug] = useState(false);
+  const [slugInput, setSlugInput] = useState(siteSlug);
+  const [savingSlug, setSavingSlug] = useState(false);
+  const [copiedSubdomain, setCopiedSubdomain] = useState(false);
+
   const [customDomainInput, setCustomDomainInput] = useState("");
   const [savedDomain, setSavedDomain] = useState<DomainRecord | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,10 +74,16 @@ export function DomainSettingsDialog({
 
   const publicPathUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/s/${siteSlug}`
-      : `/s/${siteSlug}`;
+      ? `${window.location.origin}/s/${currentSlug}`
+      : `/s/${currentSlug}`;
 
-  const fullSubdomain = subdomainFor(siteSlug);
+  const fullSubdomain = subdomainFor(currentSlug);
+
+  useEffect(() => {
+    setCurrentSlug(siteSlug);
+    setSlugInput(siteSlug);
+    setIsEditingSlug(false);
+  }, [siteSlug, open]);
 
   // ── 1. Fetch existing domain for this site on open ───────────────────────
   useEffect(() => {
@@ -99,6 +117,64 @@ export function DomainSettingsDialog({
       console.error("[DomainSettingsDialog] error loading domain:", e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // ── 1.5. Save / Customize Subdomain Slug ───────────────────────────────
+  async function handleSaveSubdomain() {
+    const cleaned = cleanSlug(slugInput);
+    const validationError = validateSlug(cleaned);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+    if (cleaned === currentSlug) {
+      setIsEditingSlug(false);
+      return;
+    }
+    if (!siteId) {
+      toast.error("ID do site ausente.");
+      return;
+    }
+
+    setSavingSlug(true);
+    try {
+      // Check if taken by another site
+      const { data: existing } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("slug", cleaned)
+        .neq("id", siteId)
+        .maybeSingle();
+
+      if (existing) {
+        toast.error(`O subdomínio "${cleaned}" já está em uso. Escolha outro.`);
+        return;
+      }
+
+      // Update in sites table
+      const { error: updateErr } = await supabase
+        .from("sites")
+        .update({ slug: cleaned })
+        .eq("id", siteId);
+
+      if (updateErr) throw updateErr;
+
+      setCurrentSlug(cleaned);
+      setIsEditingSlug(false);
+      onSlugUpdated?.(cleaned);
+
+      await queryClient.invalidateQueries({ queryKey: ["sites"] });
+      await queryClient.invalidateQueries({ queryKey: ["editor-site", siteId] });
+
+      toast.success(`Subdomínio atualizado com sucesso! 🎉`, {
+        description: `Novo endereço: ${cleaned}.${APP_CONFIG.rootDomain}`,
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro ao atualizar subdomínio.";
+      toast.error(msg);
+    } finally {
+      setSavingSlug(false);
     }
   }
 
@@ -212,11 +288,11 @@ export function DomainSettingsDialog({
         if (savedDomain?.id) {
           await supabase
             .from("domains")
-            .update({ status: "verified", ssl_active: true })
+            .update({ status: "active", ssl_active: true })
             .eq("id", savedDomain.id);
 
           setSavedDomain((prev) =>
-            prev ? { ...prev, status: "verified", ssl_active: true } : null
+            prev ? { ...prev, status: "active" as any, ssl_active: true } : null
           );
         }
         toast.success("Apontamento DNS verificado com sucesso! 🎉", {
@@ -253,7 +329,7 @@ export function DomainSettingsDialog({
         delete existingContent["custom_domain"];
         await supabase
           .from("sites")
-          .update({ content: existingContent })
+          .update({ content: existingContent as any })
           .eq("id", siteId);
       }
 
@@ -327,31 +403,118 @@ export function DomainSettingsDialog({
           </p>
         </div>
 
-        {/* ── Option 2: Automatic Subdomain ── */}
-        <div className="p-4 rounded-lg border border-border bg-card space-y-2">
-          <Label className="label-mono text-muted-foreground">Subdomínio {APP_CONFIG.name}</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              readOnly
-              value={`https://${fullSubdomain}`}
-              className="font-mono text-xs h-9 bg-muted/30"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                navigator.clipboard.writeText(`https://${fullSubdomain}`);
-                toast.success("Subdomínio copiado!");
-              }}
-              className="h-9 px-3 shrink-0 gap-1 text-xs"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              Copiar
-            </Button>
+        {/* ── Option 2: Automatic Subdomain (Editable) ── */}
+        <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="label-mono text-muted-foreground">Subdomínio {APP_CONFIG.name}</Label>
+            {!isEditingSlug && siteId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSlugInput(currentSlug);
+                  setIsEditingSlug(true);
+                }}
+                className="h-6 px-2 text-xs text-primary gap-1 hover:bg-primary/10"
+              >
+                <Pencil className="h-3 w-3" />
+                Personalizar
+              </Button>
+            )}
           </div>
+
+          {isEditingSlug ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                  <Input
+                    value={slugInput}
+                    onChange={(e) =>
+                      setSlugInput(
+                        e.target.value
+                          .toLowerCase()
+                          .normalize("NFD")
+                          .replace(/[\u0300-\u036f]/g, "")
+                          .replace(/[^a-z0-9-]/g, "")
+                      )
+                    }
+                    placeholder="seu-subdominio"
+                    className="font-mono text-xs h-9"
+                    autoFocus
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground font-mono shrink-0">
+                  .{APP_CONFIG.rootDomain}
+                </span>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSlugInput(currentSlug);
+                    setIsEditingSlug(false);
+                  }}
+                  disabled={savingSlug}
+                  className="h-8 text-xs"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveSubdomain}
+                  disabled={savingSlug || !slugInput.trim()}
+                  className="h-8 text-xs gap-1"
+                >
+                  {savingSlug && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={`https://${fullSubdomain}`}
+                className="font-mono text-xs h-9 bg-muted/30"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://${fullSubdomain}`);
+                  setCopiedSubdomain(true);
+                  toast.success("Subdomínio copiado!");
+                  setTimeout(() => setCopiedSubdomain(false), 2000);
+                }}
+                className="h-9 px-3 shrink-0 gap-1 text-xs"
+              >
+                {copiedSubdomain ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                {copiedSubdomain ? "Copiado" : "Copiar"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                asChild
+                className="h-9 px-3 shrink-0"
+              >
+                <a href={`https://${fullSubdomain}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            </div>
+          )}
           <p className="text-[11px] text-muted-foreground">
-            Subdomínio exclusivo fornecido automaticamente pela plataforma.
+            Subdomínio exclusivo fornecido pela plataforma. Você pode personalizá-lo com o nome do seu negócio.
           </p>
         </div>
 

@@ -7,8 +7,8 @@ export const APP_CONFIG = {
   tagline: "Crie seu site profissional com inteligência artificial",
   subtitle:
     "Transforme sua ideia em um site completo, moderno e pronto para publicar em poucos minutos. Sem códigos, sem barreiras.",
-  rootDomain: (typeof import.meta !== "undefined" && (import.meta as unknown as { env: Record<string, string> }).env?.VITE_ROOT_DOMAIN) || "adspainel.site",
-  cnameTarget: (typeof import.meta !== "undefined" && (import.meta as unknown as { env: Record<string, string> }).env?.VITE_CNAME_TARGET) || "cname.adspainel.site",
+  rootDomain: (typeof import.meta !== "undefined" && (import.meta as unknown as { env: Record<string, string> }).env?.["VITE_ROOT_DOMAIN"]) || "adspainel.site",
+  cnameTarget: (typeof import.meta !== "undefined" && (import.meta as unknown as { env: Record<string, string> }).env?.["VITE_CNAME_TARGET"]) || "cname.adspainel.site",
   supportEmail: "suporte@adspainel.site",
   company: "ADSPAINEL TECNOLOGIA LTDA",
 } as const;

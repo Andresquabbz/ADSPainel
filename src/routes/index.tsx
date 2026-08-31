@@ -53,9 +53,9 @@ export const Route = createFileRoute("/")({
     const rootDomain = "adspainel.site";
     let subdomain: string | null = null;
     if (host.includes(`.${rootDomain}`)) {
-      const parts = host.split(":")[0];
-      if (parts.endsWith(`.${rootDomain}`)) {
-        const sub = parts.slice(0, -(rootDomain.length + 1));
+      const hostWithoutPort = host.split(":")[0] || "";
+      if (hostWithoutPort.endsWith(`.${rootDomain}`)) {
+        const sub = hostWithoutPort.slice(0, -(rootDomain.length + 1));
         const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
         if (sub && !reserved.includes(sub)) {
           subdomain = sub;

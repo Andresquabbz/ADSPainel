@@ -62,7 +62,23 @@ interface SitePage {
   position: number;
 }
 
-type AnySection = Record<string, unknown> & { type: string };
+interface AnySection {
+  type: string;
+  badge?: any;
+  title?: any;
+  subtitle?: any;
+  cta_label?: any;
+  cta_href?: any;
+  highlight?: any;
+  body?: any;
+  description?: any;
+  name?: any;
+  role?: any;
+  avatar?: any;
+  image?: any;
+  items?: any;
+  [key: string]: any;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -126,7 +126,7 @@ export function PublicContactForm({ siteId, primaryColor }: PublicContactFormPro
           onChange={(e) => setName(e.target.value)}
           placeholder="Como podemos te chamar?"
           className="w-full h-10 px-3 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-          style={{ focusRingColor: primaryColor }}
+          style={{ ["--tw-ring-color" as any]: primaryColor }}
         />
       </div>
 

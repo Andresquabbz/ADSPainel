@@ -7,14 +7,14 @@
 export interface SiteInfo {
   name: string;
   business_name: string;
-  category: string | null;
-  goal: string | null;
-  phone: string | null;
-  whatsapp: string | null;
-  email: string | null;
-  city: string | null;
-  state: string | null;
-  style: string | null;
+  category?: string | null | undefined;
+  goal?: string | null | undefined;
+  phone?: string | null | undefined;
+  whatsapp?: string | null | undefined;
+  email?: string | null | undefined;
+  city?: string | null | undefined;
+  state?: string | null | undefined;
+  style?: string | null | undefined;
 }
 
 export interface Section {

@@ -24,6 +24,7 @@ import { SITE_CATEGORIES, SITE_GOALS, SITE_STYLES, SITE_FONTS } from "@/config/a
 import { generateSite } from "@/functions/generate-site";
 import { GeneratingScreen } from "./GeneratingScreen";
 import { supabase } from "@/integrations/supabase/client";
+import { cleanBusinessName } from "@/lib/slug";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -167,10 +168,13 @@ export function CreateSiteWizard({ open, onOpenChange, userId }: CreateSiteWizar
       const tel = formatPhone(json.estabelecimento.ddd1, json.estabelecimento.telefone1);
       const categoria = guessCategory(json.estabelecimento.atividade_principal?.descricao ?? null);
 
+      const cleanedRazao = cleanBusinessName(razao);
+      const suggestedName = fantasia?.trim() ? fantasia.trim() : (cleanedRazao || razao.trim());
+
       setData({
         ...INITIAL_DATA,
-        name: fantasia?.trim() ? fantasia.trim() : razao.trim(),
-        business_name: razao.trim(),
+        name: suggestedName,
+        business_name: cleanedRazao || razao.trim(),
         category: categoria,
         goal: "Captar clientes",
         phone: tel,

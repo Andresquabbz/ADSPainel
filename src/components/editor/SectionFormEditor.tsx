@@ -16,8 +16,18 @@ export function SectionFormEditor({ section, onChange, onBack }: SectionFormEdit
     onChange({ ...section, [key]: value });
   }
 
-  // ── Items array helpers (for features, services, menu, etc.) ───────────────
-  type ItemObject = Record<string, unknown>;
+  type ItemObject = {
+    icon?: any;
+    title?: any;
+    body?: any;
+    number?: any;
+    description?: any;
+    name?: any;
+    price?: any;
+    question?: any;
+    answer?: any;
+    [key: string]: any;
+  };
 
   const items = Array.isArray(section.items) ? (section.items as ItemObject[]) : [];
 

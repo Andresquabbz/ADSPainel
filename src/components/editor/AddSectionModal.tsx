@@ -21,15 +21,28 @@ import {
 
 export interface AnySection {
   type: string;
-  [key: string]: unknown;
+  badge?: any;
+  title?: any;
+  subtitle?: any;
+  cta_label?: any;
+  cta_href?: any;
+  highlight?: any;
+  body?: any;
+  description?: any;
+  name?: any;
+  role?: any;
+  avatar?: any;
+  image?: any;
+  items?: any;
+  [key: string]: any;
 }
 
 interface AddSectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddSection: (section: AnySection) => void;
-  businessName?: string;
-  category?: string;
+  businessName?: string | undefined;
+  category?: string | undefined;
 }
 
 interface SectionTemplateOption {
