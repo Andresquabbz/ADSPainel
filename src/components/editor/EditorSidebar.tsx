@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Layout, Palette, PhoneCall, Search } from "lucide-react";
+import { Layout, Palette, PhoneCall, Search, Lock } from "lucide-react";
 import type { AnySection } from "./AddSectionModal";
 import { SectionList } from "./SectionList";
 import { ThemeTab } from "./ThemeTab";
@@ -46,6 +47,7 @@ interface EditorSidebarProps {
   onChangeMetaVerificationTag: (tag: string) => void;
   siteSlug: string;
   category: string;
+  isRestricted?: boolean;
 }
 
 export function EditorSidebar({
@@ -85,27 +87,45 @@ export function EditorSidebar({
   onChangeMetaVerificationTag,
   siteSlug,
   category,
+  isRestricted = true,
 }: EditorSidebarProps) {
+  const [tab, setTab] = useState(isRestricted ? "contact" : "sections");
+
   return (
     <div className="w-96 flex flex-col border-r border-border bg-card h-full shrink-0 overflow-hidden">
-      <Tabs defaultValue="sections" className="flex flex-col h-full">
+      <Tabs value={isRestricted ? "contact" : tab} onValueChange={setTab} className="flex flex-col h-full">
         {/* Tab Headers */}
         <div className="p-3 border-b border-border bg-muted/30">
           <TabsList className="grid grid-cols-4 w-full h-9">
-            <TabsTrigger value="sections" className="text-xs px-2 gap-1.5" title="Seções">
-              <Layout className="h-3.5 w-3.5" />
+            <TabsTrigger
+              value="sections"
+              disabled={isRestricted}
+              className="text-xs px-2 gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isRestricted ? "Bloqueado após a criação" : "Seções"}
+            >
+              {isRestricted ? <Lock className="h-3 w-3 text-muted-foreground" /> : <Layout className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">Seções</span>
             </TabsTrigger>
-            <TabsTrigger value="theme" className="text-xs px-2 gap-1.5" title="Estilo">
-              <Palette className="h-3.5 w-3.5" />
+            <TabsTrigger
+              value="theme"
+              disabled={isRestricted}
+              className="text-xs px-2 gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isRestricted ? "Bloqueado após a criação" : "Estilo"}
+            >
+              {isRestricted ? <Lock className="h-3 w-3 text-muted-foreground" /> : <Palette className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">Estilo</span>
             </TabsTrigger>
             <TabsTrigger value="contact" className="text-xs px-2 gap-1.5" title="Contato">
-              <PhoneCall className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Contato</span>
+              <PhoneCall className="h-3.5 w-3.5 text-primary" />
+              <span className="hidden sm:inline font-bold">Contato</span>
             </TabsTrigger>
-            <TabsTrigger value="seo" className="text-xs px-2 gap-1.5" title="SEO">
-              <Search className="h-3.5 w-3.5" />
+            <TabsTrigger
+              value="seo"
+              disabled={isRestricted}
+              className="text-xs px-2 gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isRestricted ? "Bloqueado após a criação" : "SEO"}
+            >
+              {isRestricted ? <Lock className="h-3 w-3 text-muted-foreground" /> : <Search className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">SEO</span>
             </TabsTrigger>
           </TabsList>
@@ -155,6 +175,7 @@ export function EditorSidebar({
               onChangeState={onChangeState}
               address={address}
               onChangeAddress={onChangeAddress}
+              isRestricted={isRestricted}
             />
           </TabsContent>
 

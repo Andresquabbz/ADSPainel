@@ -12,6 +12,8 @@ import {
   Globe,
   GlobeLock,
   ExternalLink,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 export type ViewportMode = "desktop" | "tablet" | "mobile";
@@ -27,6 +29,9 @@ interface EditorHeaderProps {
   onSave: () => void;
   isPublishing: boolean;
   onTogglePublish: () => void;
+  isAdmin?: boolean;
+  adminUnlocked?: boolean;
+  onToggleAdminUnlock?: () => void;
 }
 
 export function EditorHeader({
@@ -40,6 +45,9 @@ export function EditorHeader({
   onSave,
   isPublishing,
   onTogglePublish,
+  isAdmin,
+  adminUnlocked,
+  onToggleAdminUnlock,
 }: EditorHeaderProps) {
   const isPublished = status === "published";
 
@@ -132,6 +140,25 @@ export function EditorHeader({
             <span className="hidden sm:inline">Preview</span>
           </Link>
         </Button>
+
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleAdminUnlock}
+            className={`h-8 px-2.5 text-xs gap-1.5 font-mono ${
+              adminUnlocked
+                ? "border-amber-500/50 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                : "border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
+            }`}
+            title={adminUnlocked ? "Bloquear abas (Simular modo cliente)" : "Desbloquear todas as abas (Super Admin)"}
+          >
+            {adminUnlocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">
+              {adminUnlocked ? "Admin: Desbloqueado" : "Cliente (Apenas Tel)"}
+            </span>
+          </Button>
+        )}
 
         <Button
           variant="outline"

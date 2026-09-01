@@ -123,6 +123,12 @@ function EditorPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Admin and permission restriction state
+  const ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
+  const isAdmin = ADMIN_EMAILS.includes((user?.email || "").toLowerCase());
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const isRestricted = !isAdmin || !adminUnlocked;
+
   // Sync loaded site data into draft state once both site AND page are loaded
   useEffect(() => {
     if (site && !pageLoading && !isInitialized) {
@@ -426,6 +432,9 @@ function EditorPage() {
         onSave={handleSave}
         isPublishing={isPublishing}
         onTogglePublish={handleTogglePublish}
+        isAdmin={isAdmin}
+        adminUnlocked={adminUnlocked}
+        onToggleAdminUnlock={() => setAdminUnlocked((prev) => !prev)}
       />
 
       {/* ── Main Area: Sidebar + Live Preview Canvas ──────────────── */}
@@ -470,6 +479,7 @@ function EditorPage() {
           onChangeMetaVerificationTag={setMetaVerificationTag}
           siteSlug={site.slug}
           category={site.category || "Geral"}
+          isRestricted={isRestricted}
         />
 
         <LivePreviewCanvas
