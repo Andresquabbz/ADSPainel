@@ -151,11 +151,11 @@ export function EditorHeader({
                 ? "border-amber-500/50 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
                 : "border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
             }`}
-            title={adminUnlocked ? "Bloquear abas (Simular modo cliente)" : "Desbloquear todas as abas (Super Admin)"}
+            title={adminUnlocked ? "Bloquear dados de contato (Modo Cliente)" : "Desbloquear todos os dados de contato (Super Admin)"}
           >
             {adminUnlocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
             <span className="hidden sm:inline">
-              {adminUnlocked ? "Admin: Desbloqueado" : "Cliente (Apenas Tel)"}
+              {adminUnlocked ? "Admin: Contato Total" : "Contato: Apenas Tel"}
             </span>
           </Button>
         )}
