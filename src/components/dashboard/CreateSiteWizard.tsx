@@ -24,6 +24,7 @@ import { SITE_CATEGORIES, SITE_GOALS, SITE_STYLES, SITE_FONTS } from "@/config/a
 import { generateSite } from "@/functions/generate-site";
 import { GeneratingScreen } from "./GeneratingScreen";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { cleanBusinessName } from "@/lib/slug";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -137,6 +138,7 @@ export function CreateSiteWizard({
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   function setField<K extends keyof WizardData>(key: K, value: WizardData[K]) {
     setData((prev) => ({ ...prev, [key]: value }));
@@ -215,21 +217,27 @@ export function CreateSiteWizard({
 
   // ── Generate (calls server fn) ─────────────────────────────────────
   async function handleGenerate() {
-    // 1. Verify token balance before starting generation
-    const { data: curProfBefore } = await supabase
-      .from("profiles")
-      .select("token_balance")
-      .eq("id", userId)
-      .maybeSingle();
+    const SUPER_ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes((user?.email || "").toLowerCase());
+    let balBefore = 10;
 
-    const balBefore = Number(curProfBefore?.token_balance) || 0;
-    if (balBefore < 2.5) {
-      toast.warning("Saldo insuficiente", {
-        description: `Você possui ${balBefore.toLocaleString("pt-BR")} tokens. É necessário ter pelo menos 2,5 tokens para gerar um site. Escolha um pacote para recarregar.`,
-      });
-      handleClose();
-      onOpenBuyTokens?.();
-      return;
+    if (!isSuperAdmin) {
+      // 1. Verify token balance before starting generation
+      const { data: curProfBefore } = await supabase
+        .from("profiles")
+        .select("token_balance")
+        .eq("id", userId)
+        .maybeSingle();
+
+      balBefore = Number(curProfBefore?.token_balance) || 0;
+      if (balBefore < 2.5) {
+        toast.warning("Saldo insuficiente", {
+          description: `Você possui ${balBefore.toLocaleString("pt-BR")} tokens. É necessário ter pelo menos 2,5 tokens para gerar um site. Escolha um pacote para recarregar.`,
+        });
+        handleClose();
+        onOpenBuyTokens?.();
+        return;
+      }
     }
 
     setStep("generating");
@@ -252,33 +260,40 @@ export function CreateSiteWizard({
         },
       });
 
-      // 2. The server already deducted 2.5 tokens in Supabase.
-      const finalBal = typeof result.newBalance === "number" ? result.newBalance : Math.max(0, balBefore - 2.5);
+      if (!isSuperAdmin) {
+        // 2. The server already deducted 2.5 tokens in Supabase.
+        const finalBal = typeof result.newBalance === "number" ? result.newBalance : Math.max(0, balBefore - 2.5);
 
-      // Backup update to Supabase profiles
-      try {
-        await supabase
-          .from("profiles")
-          .update({ token_balance: finalBal, updated_at: new Date().toISOString() })
-          .eq("id", userId);
-      } catch {}
+        // Backup update to Supabase profiles
+        try {
+          await supabase
+            .from("profiles")
+            .update({ token_balance: finalBal, updated_at: new Date().toISOString() })
+            .eq("id", userId);
+        } catch {}
 
-      // 3. Update local query cache immediately so balance updates in UI without waiting
-      queryClient.setQueryData(["profile", userId], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          token_balance: finalBal,
-        };
-      });
+        // 3. Update local query cache immediately so balance updates in UI without waiting
+        queryClient.setQueryData(["profile", userId], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            token_balance: finalBal,
+          };
+        });
+
+        toast.success("Site gerado com sucesso! 🎉", {
+          description: `${result.sectionsCount} seções criadas. Foram debitados 2,5 tokens (Saldo: ${finalBal.toLocaleString("pt-BR")} tokens).`,
+        });
+      } else {
+        toast.success("Site gerado com sucesso! 🎉", {
+          description: `${result.sectionsCount} seções criadas (Super Admin: tokens infinitos).`,
+        });
+      }
 
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
       await queryClient.invalidateQueries({ queryKey: ["token_transactions"] });
 
-      toast.success("Site gerado com sucesso! 🎉", {
-        description: `${result.sectionsCount} seções criadas. Foram debitados 2,5 tokens (Saldo: ${finalBal.toLocaleString("pt-BR")} tokens).`,
-      });
       handleClose();
       navigate({ to: "/editor/$siteId", params: { siteId: result.siteId } });
     } catch (e: unknown) {

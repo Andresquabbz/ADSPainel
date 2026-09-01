@@ -308,50 +308,54 @@ export const generateSite = createServerFn({ method: "POST" })
       console.error("[generate-site] page insert error:", pageError.message);
     }
 
-    // ── 5. Debit 2.5 tokens using authenticated client + RPC ────────────────
-    let newBalance = Math.max(0, currentBalance - TOKEN_COST);
+    // ── 5. Debit 2.5 tokens (exempt super admin) ────────────────────────────
+    let newBalance = currentBalance;
 
-    try {
-      const { data: rpcRes, error: rpcErr } = await (supabase.rpc as any)(
-        "deduct_tokens_for_generation",
-        {
-          p_user_id: userId,
-          p_tokens: TOKEN_COST,
-          p_site_name: input.name,
+    if (!isSuperAdmin) {
+      try {
+        const { data: rpcRes, error: rpcErr } = await (supabase.rpc as any)(
+          "deduct_tokens_for_generation",
+          {
+            p_user_id: userId,
+            p_tokens: TOKEN_COST,
+            p_site_name: input.name,
+          }
+        );
+        if (!rpcErr && rpcRes?.token_balance !== undefined) {
+          newBalance = Number(rpcRes.token_balance);
+          console.log(`[generate-site] RPC deducted tokens: new balance ${newBalance}`);
+        } else {
+          // Fallback: direct authenticated update
+          const { data: freshProf } = await supabase
+            .from("profiles")
+            .select("token_balance")
+            .eq("id", userId)
+            .single();
+
+          const latestBal = Number(freshProf?.token_balance ?? currentBalance) || 0;
+          newBalance = Math.max(0, latestBal - TOKEN_COST);
+
+          await supabase
+            .from("profiles")
+            .update({
+              token_balance: newBalance,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId);
+
+          await supabase.from("token_transactions").insert({
+            user_id: userId,
+            type: "generation",
+            amount: -TOKEN_COST,
+            balance_after: newBalance,
+            description: `Geração de site: ${input.name}`,
+          });
         }
-      );
-      if (!rpcErr && rpcRes?.token_balance !== undefined) {
-        newBalance = Number(rpcRes.token_balance);
-        console.log(`[generate-site] RPC deducted tokens: new balance ${newBalance}`);
-      } else {
-        // Fallback: direct authenticated update
-        const { data: freshProf } = await supabase
-          .from("profiles")
-          .select("token_balance")
-          .eq("id", userId)
-          .single();
-
-        const latestBal = Number(freshProf?.token_balance ?? currentBalance) || 0;
-        newBalance = Math.max(0, latestBal - TOKEN_COST);
-
-        await supabase
-          .from("profiles")
-          .update({
-            token_balance: newBalance,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", userId);
-
-        await supabase.from("token_transactions").insert({
-          user_id: userId,
-          type: "generation",
-          amount: -TOKEN_COST,
-          balance_after: newBalance,
-          description: `Geração de site: ${input.name}`,
-        });
+      } catch (debitErr) {
+        console.error("[generate-site] Debit error:", debitErr);
       }
-    } catch (debitErr) {
-      console.error("[generate-site] Debit error:", debitErr);
+    } else {
+      console.log(`[generate-site] Super admin generation for ${userEmail}: tokens infinitos (sem débito).`);
     }
 
     // ── 6. Return result ─────────────────────────────────────────────────────
