@@ -126,6 +126,26 @@ function DashboardPage() {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+
+      // Auto-reconcile: if balance is still 10 but user already has sites created, deduct 2.5 per site
+      const isAdminUser = ADMIN_EMAILS.includes((user!.email || "").toLowerCase());
+      if (!isAdminUser && Number(data.token_balance) === 10) {
+        try {
+          const { count } = await supabase
+            .from("sites")
+            .select("id", { count: "exact", head: true });
+
+          if (count && count > 0) {
+            const reconciledBal = Math.max(0, 10 - count * 2.5);
+            await supabase
+              .from("profiles")
+              .update({ token_balance: reconciledBal, updated_at: new Date().toISOString() })
+              .eq("id", user!.id);
+            data.token_balance = reconciledBal;
+          }
+        } catch {}
+      }
+
       return data;
     },
   });

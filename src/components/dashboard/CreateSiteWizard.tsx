@@ -252,8 +252,16 @@ export function CreateSiteWizard({
         },
       });
 
-      // 2. The server already deducted 2.5 tokens in Supabase using adminClient (service role).
+      // 2. The server already deducted 2.5 tokens in Supabase.
       const finalBal = typeof result.newBalance === "number" ? result.newBalance : Math.max(0, balBefore - 2.5);
+
+      // Backup update to Supabase profiles
+      try {
+        await supabase
+          .from("profiles")
+          .update({ token_balance: finalBal, updated_at: new Date().toISOString() })
+          .eq("id", userId);
+      } catch {}
 
       // 3. Update local query cache immediately so balance updates in UI without waiting
       queryClient.setQueryData(["profile", userId], (old: any) => {

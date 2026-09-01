@@ -308,54 +308,50 @@ export const generateSite = createServerFn({ method: "POST" })
       console.error("[generate-site] page insert error:", pageError.message);
     }
 
-    // ── 5. Debit 2.5 tokens using adminClient (bypasses RLS) ────────────────
-    const SUPABASE_URL = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
-    const SUPABASE_KEY =
-      process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
-      process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-      process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
-
+    // ── 5. Debit 2.5 tokens using authenticated client + RPC ────────────────
     let newBalance = Math.max(0, currentBalance - TOKEN_COST);
 
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      const { createClient } = await import("@supabase/supabase-js");
-      const adminClient = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
-
-      const { data: freshProf } = await adminClient
-        .from("profiles")
-        .select("token_balance")
-        .eq("id", userId)
-        .single();
-
-      const latestBal = Number(freshProf?.token_balance ?? currentBalance) || 0;
-      // If a database trigger already decremented, use it; otherwise deduct 2.5 tokens:
-      newBalance = latestBal < currentBalance ? latestBal : Math.max(0, latestBal - TOKEN_COST);
-
-      const { error: updErr } = await adminClient
-        .from("profiles")
-        .update({
-          token_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
-
-      if (updErr) {
-        console.error("[generate-site] Admin client error updating balance:", updErr);
+    try {
+      const { data: rpcRes, error: rpcErr } = await (supabase.rpc as any)(
+        "deduct_tokens_for_generation",
+        {
+          p_user_id: userId,
+          p_tokens: TOKEN_COST,
+          p_site_name: input.name,
+        }
+      );
+      if (!rpcErr && rpcRes?.token_balance !== undefined) {
+        newBalance = Number(rpcRes.token_balance);
+        console.log(`[generate-site] RPC deducted tokens: new balance ${newBalance}`);
       } else {
-        console.log(`[generate-site] Successfully debited tokens: ${latestBal} -> ${newBalance}`);
-      }
+        // Fallback: direct authenticated update
+        const { data: freshProf } = await supabase
+          .from("profiles")
+          .select("token_balance")
+          .eq("id", userId)
+          .single();
 
-      try {
-        await adminClient.from("token_transactions").insert({
+        const latestBal = Number(freshProf?.token_balance ?? currentBalance) || 0;
+        newBalance = Math.max(0, latestBal - TOKEN_COST);
+
+        await supabase
+          .from("profiles")
+          .update({
+            token_balance: newBalance,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId);
+
+        await supabase.from("token_transactions").insert({
           user_id: userId,
           type: "generation",
           amount: -TOKEN_COST,
           balance_after: newBalance,
           description: `Geração de site: ${input.name}`,
         });
-      } catch (txErr) {
-        console.error("[generate-site] Transaction log error (ignored):", txErr);
       }
+    } catch (debitErr) {
+      console.error("[generate-site] Debit error:", debitErr);
     }
 
     // ── 6. Return result ─────────────────────────────────────────────────────
