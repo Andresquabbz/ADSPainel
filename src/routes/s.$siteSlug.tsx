@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { AnySection } from "@/components/editor/AddSectionModal";
+import { getVisualStyle, type VisualStyle } from "@/lib/visual-styles";
 
 function extractMetaVerification(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -237,24 +238,26 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
     }
   }
 
+  const theme = getVisualStyle(site?.style);
+
   return (
     <div
-      className="min-h-screen bg-white text-slate-900 flex flex-col"
+      className={`min-h-screen flex flex-col ${theme.wrapperClass}`}
       style={{ fontFamily: font }}
     >
       {/* ── Public Site Header ── */}
       <header
-        className="border-b px-6 py-4 sticky top-0 bg-white/95 backdrop-blur-md z-40"
-        style={{ borderColor: primary + "20" }}
+        className={`px-6 py-4 sticky top-0 z-40 ${theme.headerClass}`}
+        style={{ borderColor: primary + "25" }}
       >
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <span className="text-xl font-extrabold tracking-tight" style={{ color: primary }}>
+          <span className={`text-xl font-extrabold tracking-tight ${theme.headingClass}`} style={{ color: primary }}>
             {site.name}
           </span>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-600">
-            <a href="#sobre" className="hover:text-gray-900 transition-colors">Sobre</a>
-            <a href="#contato" className="hover:text-gray-900 transition-colors">Contato</a>
+          <nav className={`hidden md:flex items-center gap-8 text-sm font-semibold ${theme.isDark ? "text-gray-300" : "text-gray-600"}`}>
+            <a href="#sobre" className="hover:opacity-80 transition-opacity">Sobre</a>
+            <a href="#contato" className="hover:opacity-80 transition-opacity">Contato</a>
           </nav>
 
           {site.whatsapp && (
@@ -262,7 +265,7 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
               href={whatsappHref(site.whatsapp)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-90"
+              className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white shadow-sm ${theme.buttonPrimaryClass}`}
               style={{ backgroundColor: primary }}
             >
               <MessageCircle className="h-4 w-4" />
@@ -287,6 +290,7 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             state={site.state || ""}
             address={site.address || ""}
             businessName={site.business_name || site.name}
+            theme={theme}
           />
         ))}
 
@@ -312,17 +316,18 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             state={site.state || ""}
             address={site.address || ""}
             businessName={site.business_name || site.name}
+            theme={theme}
           />
         )}
       </main>
 
       {/* ── Public Site Footer ── */}
       <footer
-        className="border-t py-12 px-6 text-center text-xs text-gray-500 bg-gray-50"
-        style={{ borderColor: primary + "20" }}
+        className={`py-12 px-6 text-center text-xs ${theme.footerClass}`}
+        style={{ borderColor: primary + "25" }}
       >
         <div className="max-w-5xl mx-auto space-y-2">
-          <p className="font-bold text-gray-800 text-sm">
+          <p className={`font-bold text-sm ${theme.isDark ? "text-gray-200" : "text-gray-800"}`}>
             {site.business_name || site.name}
           </p>
 
@@ -331,7 +336,7 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
           )}
 
           {cnpj && (
-            <p className="font-mono text-[11px] text-gray-600 font-semibold">
+            <p className="font-mono text-[11px] font-semibold opacity-80">
               CNPJ: {cnpj}
             </p>
           )}
@@ -342,10 +347,10 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             </p>
           )}
 
-          <div className="pt-6 border-t border-gray-200 mt-6 flex flex-col sm:flex-row items-center justify-between text-gray-400 text-[11px] gap-2">
+          <div className="pt-6 border-t border-current/10 mt-6 flex flex-col sm:flex-row items-center justify-between opacity-70 text-[11px] gap-2">
             <p>© {new Date().getFullYear()} {site.business_name || site.name}. Todos os direitos reservados.</p>
             <div className="flex items-center gap-4">
-              <a href="#privacidade" className="hover:text-gray-700 underline transition-colors">
+              <a href="#privacidade" className="hover:underline transition-colors">
                 Política de Privacidade
               </a>
               <span className="font-mono opacity-60">ADSPainel</span>
@@ -370,6 +375,7 @@ interface SectionRendererProps {
   state: string;
   address: string;
   businessName: string;
+  theme: VisualStyle;
 }
 
 function PublicSectionRenderer({
@@ -383,34 +389,38 @@ function PublicSectionRenderer({
   state,
   address,
   businessName,
+  theme,
 }: SectionRendererProps) {
   switch (s.type) {
     case "hero":
       return (
-        <section className="py-24 px-6 text-center relative overflow-hidden" style={{ backgroundColor: primary + "12" }}>
+        <section
+          className={`py-24 px-6 text-center ${theme.heroBgClass}`}
+          style={{ backgroundColor: theme.isDark ? undefined : primary + "12" }}
+        >
           <div className="max-w-4xl mx-auto space-y-6">
             {s.badge && (
               <span
-                className="inline-block px-4 py-1.5 rounded-full text-xs font-mono font-bold uppercase tracking-wider text-white shadow-sm"
+                className={`inline-block px-4 py-1.5 text-xs font-mono font-bold uppercase tracking-wider text-white shadow-sm ${theme.badgeRadius}`}
                 style={{ backgroundColor: primary }}
               >
                 {String(s.badge)}
               </span>
             )}
             <h1
-              className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight text-gray-900"
+              className={`text-4xl sm:text-6xl ${theme.headingClass} leading-tight`}
               style={{ color: primary }}
             >
               {String(s.title)}
             </h1>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            <p className={`text-lg sm:text-xl ${theme.subheadingClass} max-w-2xl mx-auto leading-relaxed`}>
               {String(s.subtitle)}
             </p>
             <div className="pt-4 flex flex-wrap justify-center gap-4">
               {s.cta_label && (
                 <a
                   href={String(s.cta_href || "#contato")}
-                  className="px-8 py-3.5 rounded-lg text-sm font-bold text-white shadow-md transition-all hover:opacity-95 hover:scale-105"
+                  className={`px-8 py-3.5 text-sm text-white ${theme.buttonPrimaryClass}`}
                   style={{ backgroundColor: primary }}
                 >
                   {String(s.cta_label)}
@@ -421,7 +431,7 @@ function PublicSectionRenderer({
                   href={whatsappHref(whatsapp)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg text-sm font-bold border-2 transition-all hover:opacity-80"
+                  className={`inline-flex items-center gap-2 px-8 py-3.5 text-sm ${theme.buttonSecondaryClass}`}
                   style={{ borderColor: "#25d366", color: "#25d366" }}
                 >
                   <MessageCircle className="h-4 w-4" />
@@ -437,19 +447,19 @@ function PublicSectionRenderer({
       const items = (s.items as { icon?: string; title: string; body: string }[]) ?? [];
       return (
         <section className="py-20 px-6 max-w-6xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight" style={{ color: primary }}>
+          <h2 className={`text-3xl sm:text-4xl text-center ${theme.headingClass}`} style={{ color: primary }}>
             {String(s.title || "Diferenciais")}
           </h2>
           <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {items.map((item, i) => (
               <div
                 key={i}
-                className="border-t-4 pt-6 rounded-b-xl bg-gray-50/70 p-6 shadow-sm hover:shadow-md transition-shadow"
-                style={{ borderColor: primary }}
+                className={`p-6 ${theme.cardClass}`}
+                style={{ borderTopWidth: "4px", borderTopColor: primary }}
               >
                 {item.icon && <span className="text-3xl">{item.icon}</span>}
-                <h3 className="font-bold text-base mt-3 text-gray-900">{item.title}</h3>
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">{item.body}</p>
+                <h3 className={`font-bold text-base mt-3 ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.title}</h3>
+                <p className={`text-sm mt-2 leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.body}</p>
               </div>
             ))}
           </div>
@@ -460,17 +470,17 @@ function PublicSectionRenderer({
     case "services": {
       const items = (s.items as { icon?: string; title: string; body: string }[]) ?? [];
       return (
-        <section className="py-20 px-6" style={{ backgroundColor: primary + "08" }}>
+        <section className={`py-20 px-6 ${theme.altSectionBgClass}`}>
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight" style={{ color: primary }}>
+            <h2 className={`text-3xl sm:text-4xl text-center ${theme.headingClass}`} style={{ color: primary }}>
               {String(s.title || "Nossos Serviços")}
             </h2>
             <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {items.map((item, i) => (
-                <div key={i} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div key={i} className={`p-6 ${theme.cardClass}`}>
                   {item.icon && <span className="text-3xl">{item.icon}</span>}
-                  <h3 className="font-bold text-base mt-4 text-gray-900">{item.title}</h3>
-                  <p className="text-sm text-gray-600 mt-2 leading-relaxed">{item.body}</p>
+                  <h3 className={`font-bold text-base mt-4 ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.title}</h3>
+                  <p className={`text-sm mt-2 leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.body}</p>
                 </div>
               ))}
             </div>
@@ -483,7 +493,7 @@ function PublicSectionRenderer({
       const items = (s.items as { number: string; title: string; description: string }[]) ?? [];
       return (
         <section className="py-20 px-6 max-w-6xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight" style={{ color: primary }}>
+          <h2 className={`text-3xl sm:text-4xl text-center ${theme.headingClass}`} style={{ color: primary }}>
             {String(s.title || "Como Funciona")}
           </h2>
           <ol className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -492,8 +502,8 @@ function PublicSectionRenderer({
                 <span className="font-mono text-3xl font-bold" style={{ color: primary }}>
                   {item.number}
                 </span>
-                <h3 className="font-bold text-base mt-3 text-gray-900">{item.title}</h3>
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">{item.description}</p>
+                <h3 className={`font-bold text-base mt-3 ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.title}</h3>
+                <p className={`text-sm mt-2 leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.description}</p>
               </li>
             ))}
           </ol>
@@ -503,17 +513,17 @@ function PublicSectionRenderer({
 
     case "about":
       return (
-        <section id="sobre" className="py-20 px-6" style={{ backgroundColor: primary + "06" }}>
+        <section id="sobre" className={`py-20 px-6 ${theme.accentSectionBgClass}`}>
           <div className="max-w-4xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: primary }}>
+            <h2 className={`text-3xl sm:text-4xl ${theme.headingClass}`} style={{ color: primary }}>
               {String(s.title || "Sobre Nós")}
             </h2>
             {s.highlight && (
-              <p className="font-semibold text-lg sm:text-xl text-gray-800" style={{ color: primary }}>
+              <p className="font-semibold text-lg sm:text-xl" style={{ color: primary }}>
                 {String(s.highlight)}
               </p>
             )}
-            <p className="text-base text-gray-600 leading-relaxed max-w-2xl mx-auto">
+            <p className={`text-base leading-relaxed max-w-2xl mx-auto ${theme.isDark ? "text-gray-300" : "text-gray-600"}`}>
               {String(s.body || "História e missão da empresa.")}
             </p>
           </div>
@@ -524,14 +534,14 @@ function PublicSectionRenderer({
       const items = (s.items as { name: string; description: string; price: string }[]) ?? [];
       return (
         <section className="py-20 px-6 max-w-6xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight" style={{ color: primary }}>
+          <h2 className={`text-3xl sm:text-4xl text-center ${theme.headingClass}`} style={{ color: primary }}>
             {String(s.title || "Cardápio em Destaque")}
           </h2>
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6">
             {items.map((item, i) => (
-              <div key={i} className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
-                <h3 className="font-bold text-base text-gray-900">{item.name}</h3>
-                <p className="text-sm text-gray-600 mt-2">{item.description}</p>
+              <div key={i} className={`p-6 ${theme.cardClass}`}>
+                <h3 className={`font-bold text-base ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.name}</h3>
+                <p className={`text-sm mt-2 ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.description}</p>
                 <p className="font-mono font-bold text-base mt-4" style={{ color: primary }}>{item.price}</p>
               </div>
             ))}
@@ -545,14 +555,14 @@ function PublicSectionRenderer({
       const items = (s.items as { name: string; description: string }[]) ?? [];
       return (
         <section className="py-20 px-6 max-w-6xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight" style={{ color: primary }}>
+          <h2 className={`text-3xl sm:text-4xl text-center ${theme.headingClass}`} style={{ color: primary }}>
             {String(s.title || "Categorias")}
           </h2>
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6">
             {items.map((item, i) => (
-              <div key={i} className="border-l-4 bg-gray-50 p-6 rounded-r-xl shadow-sm" style={{ borderColor: primary }}>
-                <h3 className="font-bold text-base text-gray-900">{item.name}</h3>
-                <p className="text-sm text-gray-600 mt-2">{item.description}</p>
+              <div key={i} className={`p-6 ${theme.cardClass} ${theme.cardBorderHighlight}`} style={{ borderLeftColor: primary }}>
+                <h3 className={`font-bold text-base ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.name}</h3>
+                <p className={`text-sm mt-2 ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.description}</p>
               </div>
             ))}
           </div>
@@ -564,14 +574,14 @@ function PublicSectionRenderer({
       const items = (s.items as { question: string; answer: string }[]) ?? [];
       return (
         <section className="py-20 px-6 max-w-3xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight" style={{ color: primary }}>
+          <h2 className={`text-3xl sm:text-4xl text-center ${theme.headingClass}`} style={{ color: primary }}>
             {String(s.title || "Dúvidas Frequentes")}
           </h2>
           <div className="mt-10 space-y-4">
             {items.map((item, i) => (
-              <div key={i} className="border border-gray-200 rounded-xl p-6 bg-gray-50/60 shadow-sm">
-                <h3 className="font-bold text-base text-gray-900">{item.question}</h3>
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">{item.answer}</p>
+              <div key={i} className={`p-6 ${theme.cardClass}`}>
+                <h3 className={`font-bold text-base ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.question}</h3>
+                <p className={`text-sm mt-2 leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.answer}</p>
               </div>
             ))}
           </div>
@@ -581,19 +591,19 @@ function PublicSectionRenderer({
 
     case "contact":
       return (
-        <section id="contato" className="py-20 px-6" style={{ backgroundColor: primary + "10" }}>
+        <section id="contato" className={`py-20 px-6 ${theme.altSectionBgClass}`}>
           <div className="max-w-4xl mx-auto space-y-10 text-center">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: primary }}>
+              <h2 className={`text-3xl sm:text-4xl ${theme.headingClass}`} style={{ color: primary }}>
                 {String(s.title || "Fale Conosco")}
               </h2>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className={`text-sm mt-2 ${theme.subheadingClass}`}>
                 Entre em contato pelos nossos canais ou envie uma mensagem direta abaixo.
               </p>
             </div>
 
             {/* Quick Contact Links */}
-            <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-gray-700">
+            <div className={`flex flex-wrap justify-center gap-6 text-sm font-medium ${theme.isDark ? "text-gray-300" : "text-gray-700"}`}>
               {phone && (
                 <a href={`tel:${phone.replace(/\D/g, "")}`} className="inline-flex items-center gap-2 hover:underline">
                   <Phone className="h-5 w-5" style={{ color: primary }} />
@@ -630,24 +640,24 @@ function PublicSectionRenderer({
     case "privacy": {
       const items = (s.items as { title: string; description: string }[]) ?? [];
       return (
-        <section id="privacidade" className="py-20 px-6 border-t border-gray-100 bg-gray-50/60">
+        <section id="privacidade" className={`py-20 px-6 ${theme.privacySectionBgClass}`}>
           <div className="max-w-4xl mx-auto space-y-8 text-center">
             <div className="inline-flex items-center justify-center p-3 rounded-full mb-1" style={{ backgroundColor: primary + "15" }}>
               <ShieldCheck className="h-7 w-7" style={{ color: primary }} />
             </div>
             <div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">
+              <h2 className={`text-3xl sm:text-4xl ${theme.headingClass}`} style={{ color: primary }}>
                 {String(s.title || "Política de Privacidade")}
               </h2>
               {s.subtitle && (
-                <p className="text-sm text-gray-500 mt-2 max-w-xl mx-auto leading-relaxed">
+                <p className={`text-sm mt-2 max-w-xl mx-auto leading-relaxed ${theme.subheadingClass}`}>
                   {String(s.subtitle)}
                 </p>
               )}
             </div>
 
             {s.body && (
-              <div className="bg-white border border-gray-200/80 rounded-2xl p-6 sm:p-8 text-sm text-gray-600 leading-relaxed shadow-sm text-left">
+              <div className={`p-6 sm:p-8 text-sm leading-relaxed text-left ${theme.cardClass}`}>
                 <p>{String(s.body)}</p>
               </div>
             )}
@@ -655,12 +665,12 @@ function PublicSectionRenderer({
             {items.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                 {items.map((item, i) => (
-                  <div key={i} className="border border-gray-200/80 rounded-xl p-5 bg-white shadow-sm space-y-1.5">
-                    <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                  <div key={i} className={`p-5 space-y-1.5 ${theme.cardClass}`}>
+                    <h3 className={`font-bold text-sm flex items-center gap-2 ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>
                       <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: primary }} />
                       {item.title}
                     </h3>
-                    <p className="text-xs text-gray-500 leading-relaxed">{item.description}</p>
+                    <p className={`text-xs leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-500"}`}>{item.description}</p>
                   </div>
                 ))}
               </div>

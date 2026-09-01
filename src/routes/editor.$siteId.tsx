@@ -487,6 +487,7 @@ function EditorPage() {
           viewport={viewport}
           primaryColor={primaryColor}
           fontFamily={fontFamily}
+          style={style}
           name={name}
           businessName={businessName}
           cnpj={cnpj}

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SITE_CATEGORIES, SITE_GOALS, SITE_STYLES, SITE_FONTS } from "@/config/app";
+import { VISUAL_STYLES } from "@/lib/visual-styles";
 import { generateSite } from "@/functions/generate-site";
 import { GeneratingScreen } from "./GeneratingScreen";
 import { supabase } from "@/integrations/supabase/client";
@@ -504,9 +505,9 @@ export function CreateSiteWizard({
                         key={s}
                         type="button"
                         onClick={() => setField("style", s)}
-                        className={`border px-3 py-2 font-mono text-xs transition-colors ${
+                        className={`border px-3 py-2 font-mono text-xs transition-colors rounded-lg ${
                           data.style === s
-                            ? "border-primary bg-primary/10 text-primary"
+                            ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
                             : "border-border text-muted-foreground hover:border-primary/50"
                         }`}
                       >
@@ -514,6 +515,23 @@ export function CreateSiteWizard({
                       </button>
                     ))}
                   </div>
+                  {data.style && (() => {
+                    const cfg = VISUAL_STYLES[data.style];
+                    if (!cfg) return null;
+                    return (
+                      <div className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-primary mr-1.5">{data.style}:</span>
+                          <span className="text-muted-foreground">{cfg.description}</span>
+                        </div>
+                        {cfg.isDark && (
+                          <span className="ml-2 shrink-0 text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-slate-900 text-amber-300">
+                            Dark VIP
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-2">

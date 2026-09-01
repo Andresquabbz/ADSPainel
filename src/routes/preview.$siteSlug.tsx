@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { subdomainFor } from "@/config/app";
+import { getVisualStyle, type VisualStyle } from "@/lib/visual-styles";
 
 function extractMetaVerification(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -100,34 +101,34 @@ function whatsappHref(raw: unknown): string {
 
 // ─── Section renderers ────────────────────────────────────────────────────────
 
-function SectionHero({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionHero({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const primary = site.primary_color;
   const font = site.font_family;
   return (
-    <section className="relative overflow-hidden py-28 text-center" style={{ backgroundColor: primary + "14" }}>
+    <section className={`relative overflow-hidden py-28 text-center ${theme.heroBgClass}`} style={{ backgroundColor: theme.isDark ? undefined : primary + "14" }}>
       <div className="mx-auto max-w-4xl px-6">
         {s.badge && (
-          <span className="mb-4 inline-block rounded-full px-4 py-1 font-mono text-xs font-bold uppercase tracking-widest text-white"
+          <span className={`mb-4 inline-block px-4 py-1 font-mono text-xs font-bold uppercase tracking-widest text-white shadow-sm ${theme.badgeRadius}`}
             style={{ backgroundColor: primary }}>
             {String(s.badge)}
           </span>
         )}
-        <h1 className="mt-4 text-5xl font-extrabold leading-tight tracking-tight md:text-6xl"
+        <h1 className={`mt-4 text-5xl font-extrabold leading-tight tracking-tight md:text-6xl ${theme.headingClass}`}
           style={{ fontFamily: font, color: primary }}>
           {String(s.title ?? "")}
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-500">{String(s.subtitle ?? "")}</p>
+        <p className={`mx-auto mt-6 max-w-2xl text-lg ${theme.subheadingClass}`}>{String(s.subtitle ?? "")}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           {s.cta_label && (
             <a href={String(s.cta_href ?? "#contato")}
-              className="inline-block px-8 py-3.5 text-sm font-bold text-white shadow-lg transition-opacity hover:opacity-90"
+              className={`inline-block px-8 py-3.5 text-sm text-white ${theme.buttonPrimaryClass}`}
               style={{ backgroundColor: primary }}>
               {String(s.cta_label)}
             </a>
           )}
           {site.whatsapp && (
             <a href={whatsappHref(site.whatsapp)} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 border px-8 py-3.5 text-sm font-bold transition-colors hover:opacity-80"
+              className={`inline-flex items-center gap-2 px-8 py-3.5 text-sm ${theme.buttonSecondaryClass}`}
               style={{ borderColor: "#25d366", color: "#25d366" }}>
               <MessageCircle className="h-4 w-4" /> WhatsApp
             </a>
@@ -138,7 +139,7 @@ function SectionHero({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionFeatures({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionFeatures({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const items = (s.items as { icon?: string; title: string; body: string }[]) ?? [];
   return (
     <section className="py-24">
@@ -146,13 +147,13 @@ function SectionFeatures({ s, site }: { s: AnySection; site: SiteData }) {
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Diferenciais
         </p>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{String(s.title ?? "")}</h2>
+        <h2 className={`mt-3 text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "")}</h2>
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((item, i) => (
-            <div key={i} className="border-t-4 pt-5" style={{ borderColor: site.primary_color }}>
+            <div key={i} className={`p-6 ${theme.cardClass}`} style={{ borderTopWidth: "4px", borderTopColor: site.primary_color }}>
               {item.icon && <span className="text-2xl">{item.icon}</span>}
-              <h3 className="mt-2 font-bold tracking-tight">{item.title}</h3>
-              <p className="mt-2 text-sm text-gray-500">{item.body}</p>
+              <h3 className={`mt-2 font-bold tracking-tight ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.title}</h3>
+              <p className={`mt-2 text-sm leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.body}</p>
             </div>
           ))}
         </div>
@@ -161,21 +162,21 @@ function SectionFeatures({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionServices({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionServices({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const items = (s.items as { icon?: string; title: string; body: string }[]) ?? [];
   return (
-    <section className="py-24" style={{ backgroundColor: site.primary_color + "08" }}>
+    <section className={`py-24 ${theme.altSectionBgClass}`}>
       <div className="mx-auto max-w-6xl px-6">
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Serviços
         </p>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{String(s.title ?? "")}</h2>
-        <div className="mt-12 grid gap-px bg-gray-200 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className={`mt-3 text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "")}</h2>
+        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((item, i) => (
-            <div key={i} className="bg-white p-7">
+            <div key={i} className={`p-7 ${theme.cardClass}`}>
               {item.icon && <span className="text-3xl">{item.icon}</span>}
-              <h3 className="mt-4 font-bold tracking-tight">{item.title}</h3>
-              <p className="mt-2 text-sm text-gray-500">{item.body}</p>
+              <h3 className={`mt-4 font-bold tracking-tight ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.title}</h3>
+              <p className={`mt-2 text-sm leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.body}</p>
             </div>
           ))}
         </div>
@@ -184,7 +185,7 @@ function SectionServices({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionSteps({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionSteps({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const items = (s.items as { number: string; title: string; description: string }[]) ?? [];
   return (
     <section className="py-24">
@@ -192,15 +193,15 @@ function SectionSteps({ s, site }: { s: AnySection; site: SiteData }) {
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Como funciona
         </p>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{String(s.title ?? "")}</h2>
+        <h2 className={`mt-3 text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "")}</h2>
         <ol className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((item, i) => (
-            <li key={i} className="border-t-2 pt-5" style={{ borderColor: site.primary_color }}>
+            <li key={i} className={`border-t-2 pt-5`} style={{ borderColor: site.primary_color }}>
               <span className="font-mono text-3xl font-bold" style={{ color: site.primary_color }}>
                 {item.number}
               </span>
-              <h3 className="mt-3 font-bold tracking-tight">{item.title}</h3>
-              <p className="mt-2 text-sm text-gray-500">{item.description}</p>
+              <h3 className={`mt-3 font-bold tracking-tight ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.title}</h3>
+              <p className={`mt-2 text-sm leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.description}</p>
             </li>
           ))}
         </ol>
@@ -209,26 +210,26 @@ function SectionSteps({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionAbout({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionAbout({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   return (
-    <section className="py-24" style={{ backgroundColor: site.primary_color + "06" }}>
+    <section id="sobre" className={`py-24 ${theme.accentSectionBgClass}`}>
       <div className="mx-auto max-w-5xl px-6">
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Sobre nós
         </p>
-        <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight">{String(s.title ?? "")}</h2>
+        <h2 className={`mt-3 max-w-2xl text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "")}</h2>
         {s.highlight && (
           <p className="mt-4 text-lg font-semibold" style={{ color: site.primary_color }}>
             {String(s.highlight)}
           </p>
         )}
-        <p className="mt-4 max-w-2xl text-gray-500">{String(s.body ?? "")}</p>
+        <p className={`mt-4 max-w-2xl leading-relaxed ${theme.isDark ? "text-gray-300" : "text-gray-600"}`}>{String(s.body ?? "")}</p>
       </div>
     </section>
   );
 }
 
-function SectionMenuHighlight({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionMenuHighlight({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const items = (s.items as { name: string; description: string; price: string }[]) ?? [];
   return (
     <section className="py-24">
@@ -236,12 +237,12 @@ function SectionMenuHighlight({ s, site }: { s: AnySection; site: SiteData }) {
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Cardápio
         </p>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{String(s.title ?? "")}</h2>
+        <h2 className={`mt-3 text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "")}</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {items.map((item, i) => (
-            <div key={i} className="border border-gray-200 p-6">
-              <h3 className="font-bold tracking-tight">{item.name}</h3>
-              <p className="mt-2 text-sm text-gray-500">{item.description}</p>
+            <div key={i} className={`p-6 ${theme.cardClass}`}>
+              <h3 className={`font-bold tracking-tight ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.name}</h3>
+              <p className={`mt-2 text-sm ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.description}</p>
               <p className="mt-4 font-mono font-bold" style={{ color: site.primary_color }}>{item.price}</p>
             </div>
           ))}
@@ -251,20 +252,20 @@ function SectionMenuHighlight({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionCategories({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionCategories({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const items = (s.items as { name: string; description: string }[]) ?? [];
   return (
-    <section className="py-24" style={{ backgroundColor: site.primary_color + "08" }}>
+    <section className={`py-24 ${theme.altSectionBgClass}`}>
       <div className="mx-auto max-w-6xl px-6">
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Categorias
         </p>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{String(s.title ?? "")}</h2>
+        <h2 className={`mt-3 text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "")}</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {items.map((item, i) => (
-            <div key={i} className="border-l-4 bg-white p-6 shadow-sm" style={{ borderColor: site.primary_color }}>
-              <h3 className="font-bold">{item.name}</h3>
-              <p className="mt-1 text-sm text-gray-500">{item.description}</p>
+            <div key={i} className={`p-6 ${theme.cardClass} ${theme.cardBorderHighlight}`} style={{ borderLeftColor: site.primary_color }}>
+              <h3 className={`font-bold ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>{item.name}</h3>
+              <p className={`mt-1 text-sm ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.description}</p>
             </div>
           ))}
         </div>
@@ -273,7 +274,7 @@ function SectionCategories({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionSpecialties({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionSpecialties({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const items = (s.items as { name: string; description: string }[]) ?? [];
   return (
     <section className="py-24">
@@ -281,12 +282,12 @@ function SectionSpecialties({ s, site }: { s: AnySection; site: SiteData }) {
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Especialidades
         </p>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{String(s.title ?? "")}</h2>
+        <h2 className={`mt-3 text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "")}</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {items.map((item, i) => (
-            <div key={i} className="border p-6" style={{ borderColor: site.primary_color + "40" }}>
-              <h3 className="font-bold" style={{ color: site.primary_color }}>{item.name}</h3>
-              <p className="mt-2 text-sm text-gray-500">{item.description}</p>
+            <div key={i} className={`p-6 ${theme.cardClass} ${theme.cardBorderHighlight}`} style={{ borderLeftColor: site.primary_color }}>
+              <h3 className={`font-bold ${theme.isDark ? "text-gray-100" : "text-gray-900"}`} style={{ color: site.primary_color }}>{item.name}</h3>
+              <p className={`mt-2 text-sm ${theme.isDark ? "text-gray-400" : "text-gray-600"}`}>{item.description}</p>
             </div>
           ))}
         </div>
@@ -295,39 +296,39 @@ function SectionSpecialties({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionContact({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionContact({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const hasCta = site.phone || site.whatsapp || site.email;
   return (
-    <section id="contato" className="py-24" style={{ backgroundColor: site.primary_color + "12" }}>
+    <section id="contato" className={`py-24 ${theme.altSectionBgClass}`}>
       <div className="mx-auto max-w-5xl px-6">
         <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: site.primary_color }}>
           Contato
         </p>
-        <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{String(s.title ?? "Entre em contato")}</h2>
+        <h2 className={`mt-3 text-3xl font-extrabold tracking-tight ${theme.headingClass}`}>{String(s.title ?? "Entre em contato")}</h2>
         <div className="mt-10 flex flex-col gap-5">
           {site.phone && (
             <a href={`tel:${site.phone.replace(/\D/g, "")}`}
-              className="inline-flex items-center gap-3 text-sm font-medium hover:underline">
+              className={`inline-flex items-center gap-3 text-sm font-medium hover:underline ${theme.isDark ? "text-gray-300" : "text-gray-700"}`}>
               <Phone className="h-5 w-5" style={{ color: site.primary_color }} />
               {formatPhone(site.phone)}
             </a>
           )}
           {site.whatsapp && (
             <a href={whatsappHref(site.whatsapp)} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 text-sm font-medium hover:underline">
+              className={`inline-flex items-center gap-3 text-sm font-medium hover:underline ${theme.isDark ? "text-gray-300" : "text-gray-700"}`}>
               <MessageCircle className="h-5 w-5" style={{ color: "#25d366" }} />
               {formatPhone(site.whatsapp)} — WhatsApp
             </a>
           )}
           {site.email && (
             <a href={`mailto:${site.email}`}
-              className="inline-flex items-center gap-3 text-sm font-medium hover:underline">
+              className={`inline-flex items-center gap-3 text-sm font-medium hover:underline ${theme.isDark ? "text-gray-300" : "text-gray-700"}`}>
               <Mail className="h-5 w-5" style={{ color: site.primary_color }} />
               {site.email}
             </a>
           )}
           {(site.address || site.city) && (
-            <span className="inline-flex items-center gap-3 text-sm">
+            <span className={`inline-flex items-center gap-3 text-sm ${theme.isDark ? "text-gray-300" : "text-gray-700"}`}>
               <MapPin className="h-5 w-5" style={{ color: site.primary_color }} />
               {[site.address, site.city, site.state].filter(Boolean).join(", ")}
             </span>
@@ -338,7 +339,7 @@ function SectionContact({ s, site }: { s: AnySection; site: SiteData }) {
         </div>
         {site.whatsapp && (
           <a href={whatsappHref(site.whatsapp)} target="_blank" rel="noopener noreferrer"
-            className="mt-8 inline-flex items-center gap-2 px-8 py-4 text-sm font-bold text-white shadow-lg transition-opacity hover:opacity-90"
+            className={`mt-8 inline-flex items-center gap-2 px-8 py-4 text-sm text-white ${theme.buttonPrimaryClass}`}
             style={{ backgroundColor: site.primary_color }}>
             <MessageCircle className="h-4 w-4" />
             {String(s.title ?? "Fale conosco")}
@@ -349,27 +350,27 @@ function SectionContact({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function SectionPrivacyPolicy({ s, site }: { s: AnySection; site: SiteData }) {
+function SectionPrivacyPolicy({ s, site, theme }: { s: AnySection; site: SiteData; theme: VisualStyle }) {
   const items = (s.items as { title: string; description: string }[]) ?? [];
   return (
-    <section id="privacidade" className="py-20 border-t border-gray-100 bg-gray-50/60">
+    <section id="privacidade" className={`py-20 ${theme.privacySectionBgClass}`}>
       <div className="mx-auto max-w-4xl px-6 space-y-8 text-center">
         <div className="inline-flex items-center justify-center p-3 rounded-full mb-1" style={{ backgroundColor: site.primary_color + "15" }}>
           <ShieldCheck className="h-7 w-7" style={{ color: site.primary_color }} />
         </div>
         <div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">
+          <h2 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${theme.headingClass}`}>
             {String(s.title || "Política de Privacidade")}
           </h2>
           {s.subtitle && (
-            <p className="text-sm text-gray-500 mt-2 max-w-xl mx-auto leading-relaxed">
+            <p className={`text-sm mt-2 max-w-xl mx-auto leading-relaxed ${theme.subheadingClass}`}>
               {String(s.subtitle)}
             </p>
           )}
         </div>
 
         {s.body && (
-          <div className="bg-white border border-gray-200/80 rounded-2xl p-6 sm:p-8 text-sm text-gray-600 leading-relaxed shadow-sm text-left">
+          <div className={`p-6 sm:p-8 text-sm leading-relaxed text-left ${theme.cardClass}`}>
             <p>{String(s.body)}</p>
           </div>
         )}
@@ -377,12 +378,12 @@ function SectionPrivacyPolicy({ s, site }: { s: AnySection; site: SiteData }) {
         {items.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
             {items.map((item, i) => (
-              <div key={i} className="border border-gray-200/80 rounded-xl p-5 bg-white shadow-sm space-y-1.5">
-                <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+              <div key={i} className={`p-5 space-y-1.5 ${theme.cardClass}`}>
+                <h3 className={`font-bold text-sm flex items-center gap-2 ${theme.isDark ? "text-gray-100" : "text-gray-900"}`}>
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: site.primary_color }} />
                   {item.title}
                 </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">{item.description}</p>
+                <p className={`text-xs leading-relaxed ${theme.isDark ? "text-gray-400" : "text-gray-500"}`}>{item.description}</p>
               </div>
             ))}
           </div>
@@ -392,8 +393,8 @@ function SectionPrivacyPolicy({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
-function renderSection(block: AnySection, site: SiteData, idx: number) {
-  const props = { s: block, site };
+function renderSection(block: AnySection, site: SiteData, idx: number, theme: VisualStyle) {
+  const props = { s: block, site, theme };
   switch (block.type) {
     case "hero":            return <SectionHero key={idx} {...props} />;
     case "features":        return <SectionFeatures key={idx} {...props} />;
@@ -528,9 +529,10 @@ function PreviewPage() {
   }
 
   const hasContent = allSections.length > 0;
+  const theme = getVisualStyle(site.style);
 
   return (
-    <div style={{ fontFamily: font, color: "#111" }} className="min-h-screen bg-white">
+    <div style={{ fontFamily: font }} className={`min-h-screen flex flex-col ${theme.wrapperClass}`}>
 
       {/* Preview banner */}
       <div className="sticky top-0 z-50 flex items-center justify-between gap-4 bg-gray-900 px-4 py-2 text-xs text-white">
@@ -558,18 +560,18 @@ function PreviewPage() {
       </div>
 
       {/* Site header */}
-      <header className="border-b px-6" style={{ borderColor: primary + "25" }}>
+      <header className={`px-6 sticky top-8 z-40 ${theme.headerClass}`} style={{ borderColor: primary + "25" }}>
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between">
-          <span className="text-lg font-extrabold tracking-tight" style={{ fontFamily: font, color: primary }}>
+          <span className={`text-lg font-extrabold tracking-tight ${theme.headingClass}`} style={{ fontFamily: font, color: primary }}>
             {site.name}
           </span>
-          <nav className="hidden items-center gap-8 text-sm font-medium text-gray-500 md:flex">
-            <a href="#sobre" className="hover:text-gray-900 transition-colors">Sobre</a>
-            <a href="#contato" className="hover:text-gray-900 transition-colors">Contato</a>
+          <nav className={`hidden items-center gap-8 text-sm font-medium md:flex ${theme.isDark ? "text-gray-300" : "text-gray-500"}`}>
+            <a href="#sobre" className="hover:opacity-80 transition-opacity">Sobre</a>
+            <a href="#contato" className="hover:opacity-80 transition-opacity">Contato</a>
           </nav>
           {site.whatsapp && (
             <a href={whatsappHref(site.whatsapp)} target="_blank" rel="noopener noreferrer"
-              className="hidden items-center gap-2 px-4 py-2 text-xs font-bold text-white sm:inline-flex transition-opacity hover:opacity-90"
+              className={`hidden items-center gap-2 px-4 py-2 text-xs font-bold text-white sm:inline-flex ${theme.buttonPrimaryClass}`}
               style={{ backgroundColor: primary }}>
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
             </a>
@@ -581,7 +583,7 @@ function PreviewPage() {
       {hasContent
         ? (
           <>
-            {allSections.map((block, idx) => renderSection(block, site, idx))}
+            {allSections.map((block, idx) => renderSection(block, site, idx, theme))}
             {!allSections.some((s) => s.type === "privacy_policy" || s.type === "privacy") && (
               renderSection(
                 {
@@ -596,7 +598,8 @@ function PreviewPage() {
                   ],
                 },
                 site,
-                9999
+                9999,
+                theme
               )
             )}
           </>
@@ -611,7 +614,7 @@ function PreviewPage() {
             </p>
             {site.whatsapp && (
               <a href={whatsappHref(site.whatsapp)} target="_blank" rel="noopener noreferrer"
-                className="mt-8 inline-flex items-center gap-2 px-8 py-4 text-sm font-bold text-white"
+                className={`mt-8 inline-flex items-center gap-2 px-8 py-4 text-sm font-bold text-white ${theme.buttonPrimaryClass}`}
                 style={{ backgroundColor: primary }}>
                 <MessageCircle className="h-4 w-4" /> WhatsApp
               </a>
@@ -620,26 +623,26 @@ function PreviewPage() {
         )}
 
       {/* Footer */}
-      <footer className="border-t py-12 text-center text-xs text-gray-400" style={{ borderColor: primary + "20" }}>
-        <p className="font-semibold text-gray-600">
+      <footer className={`py-12 text-center text-xs ${theme.footerClass}`} style={{ borderColor: primary + "25" }}>
+        <p className={`font-semibold ${theme.isDark ? "text-gray-200" : "text-gray-600"}`}>
           © {new Date().getFullYear()} {site.business_name}
           {(site.city || site.state) && (
             <span> · {[site.city, site.state].filter(Boolean).join(" — ")}</span>
           )}
         </p>
         {cnpj && (
-          <p className="mt-2 font-mono text-[11px]">CNPJ: {cnpj}</p>
+          <p className="mt-2 font-mono text-[11px] opacity-80">CNPJ: {cnpj}</p>
         )}
         {site.email && (
           <p className="mt-1">
-            <a href={`mailto:${site.email}`} className="hover:text-gray-600 underline">{site.email}</a>
+            <a href={`mailto:${site.email}`} className="hover:underline">{site.email}</a>
           </p>
         )}
-        <div className="pt-4 border-t border-gray-200/60 mt-4 flex flex-col sm:flex-row items-center justify-between text-gray-400 text-[10px] gap-2">
-          <a href="#privacidade" className="hover:text-gray-600 underline">
+        <div className="pt-4 border-t border-current/10 mt-4 flex flex-col sm:flex-row items-center justify-between opacity-70 text-[10px] gap-2 px-6">
+          <a href="#privacidade" className="hover:underline">
             Política de Privacidade (LGPD)
           </a>
-          <span className="font-mono opacity-40">Criado com ADSPainel</span>
+          <span className="font-mono opacity-60">Criado com ADSPainel</span>
         </div>
       </footer>
     </div>

@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SITE_STYLES, SITE_FONTS } from "@/config/app";
+import { VISUAL_STYLES } from "@/lib/visual-styles";
 
 interface ThemeTabProps {
   primaryColor: string;
@@ -96,22 +97,60 @@ export function ThemeTab({
 
       {/* Visual Style */}
       <div className="space-y-3">
-        <Label className="label-mono text-muted-foreground">Estilo Visual do Design</Label>
-        <div className="grid grid-cols-2 gap-2">
-          {SITE_STYLES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onChangeStyle(s)}
-              className={`border p-2.5 rounded-lg font-mono text-xs transition-all text-left ${
-                style === s
-                  ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
+        <div className="flex items-center justify-between">
+          <Label className="label-mono text-muted-foreground">Estilo Visual do Design</Label>
+          <span className="text-[11px] font-mono text-primary font-bold">
+            {style || "Moderno"}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Cada estilo aplica automaticamente formato dos botões, cantos dos cards, sombras e paleta visual ao site.
+        </p>
+        <div className="grid grid-cols-1 gap-2.5">
+          {SITE_STYLES.map((s) => {
+            const config = VISUAL_STYLES[s];
+            const isSelected = style === s;
+
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onChangeStyle(s)}
+                className={`border p-3 rounded-xl transition-all text-left flex items-start gap-3 ${
+                  isSelected
+                    ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary"
+                    : "border-border bg-card/40 text-muted-foreground hover:border-primary/50 hover:bg-card/80 hover:text-foreground"
+                }`}
+              >
+                <div
+                  className={`h-7 w-7 shrink-0 flex items-center justify-center font-bold text-xs ${config?.cardRadius || "rounded-lg"} ${
+                    isSelected
+                      ? "bg-primary text-white"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  Aa
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-xs font-bold ${isSelected ? "text-primary" : "text-foreground"}`}>
+                      {s}
+                    </span>
+                    {config?.isDark && (
+                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-900 text-amber-300 font-bold">
+                        Dark VIP
+                      </span>
+                    )}
+                  </div>
+                  {config?.description && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      {config.description}
+                    </p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
