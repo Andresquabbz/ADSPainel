@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Eye,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { subdomainFor } from "@/config/app";
@@ -348,6 +349,49 @@ function SectionContact({ s, site }: { s: AnySection; site: SiteData }) {
   );
 }
 
+function SectionPrivacyPolicy({ s, site }: { s: AnySection; site: SiteData }) {
+  const items = (s.items as { title: string; description: string }[]) ?? [];
+  return (
+    <section id="privacidade" className="py-20 border-t border-gray-100 bg-gray-50/60">
+      <div className="mx-auto max-w-4xl px-6 space-y-8 text-center">
+        <div className="inline-flex items-center justify-center p-3 rounded-full mb-1" style={{ backgroundColor: site.primary_color + "15" }}>
+          <ShieldCheck className="h-7 w-7" style={{ color: site.primary_color }} />
+        </div>
+        <div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">
+            {String(s.title || "Política de Privacidade")}
+          </h2>
+          {s.subtitle && (
+            <p className="text-sm text-gray-500 mt-2 max-w-xl mx-auto leading-relaxed">
+              {String(s.subtitle)}
+            </p>
+          )}
+        </div>
+
+        {s.body && (
+          <div className="bg-white border border-gray-200/80 rounded-2xl p-6 sm:p-8 text-sm text-gray-600 leading-relaxed shadow-sm text-left">
+            <p>{String(s.body)}</p>
+          </div>
+        )}
+
+        {items.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+            {items.map((item, i) => (
+              <div key={i} className="border border-gray-200/80 rounded-xl p-5 bg-white shadow-sm space-y-1.5">
+                <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: site.primary_color }} />
+                  {item.title}
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function renderSection(block: AnySection, site: SiteData, idx: number) {
   const props = { s: block, site };
   switch (block.type) {
@@ -360,6 +404,8 @@ function renderSection(block: AnySection, site: SiteData, idx: number) {
     case "categories":      return <SectionCategories key={idx} {...props} />;
     case "specialties":     return <SectionSpecialties key={idx} {...props} />;
     case "contact":         return <SectionContact key={idx} {...props} />;
+    case "privacy_policy":
+    case "privacy":         return <SectionPrivacyPolicy key={idx} {...props} />;
     default:
       return (
         <div key={idx} className="mx-auto max-w-4xl px-6 py-10">
@@ -533,7 +579,28 @@ function PreviewPage() {
 
       {/* Sections */}
       {hasContent
-        ? allSections.map((block, idx) => renderSection(block, site, idx))
+        ? (
+          <>
+            {allSections.map((block, idx) => renderSection(block, site, idx))}
+            {!allSections.some((s) => s.type === "privacy_policy" || s.type === "privacy") && (
+              renderSection(
+                {
+                  type: "privacy_policy",
+                  title: "Política de Privacidade",
+                  subtitle: `Compromisso com a sua privacidade e conformidade com a LGPD (Lei nº 13.709/2018).`,
+                  body: `A ${site.business_name || site.name} preza pela segurança, confidencialidade e transparência no tratamento dos dados pessoais de seus clientes e usuários, em total conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018). As informações coletadas voluntariamente através de nossos canais de atendimento são utilizadas unicamente para responder a solicitações, esclarecer dúvidas e viabilizar a prestação dos serviços contratados.`,
+                  items: [
+                    { title: "Coleta e Finalidade", description: "Utilizamos informações de contato exclusivamente para responder suas dúvidas, pedidos e orçamentos." },
+                    { title: "Segurança das Informações", description: "Seus dados são protegidos com medidas adequadas e nunca comercializados com terceiros." },
+                    { title: "Seus Direitos (LGPD)", description: "Você pode solicitar acesso, alteração ou exclusão dos seus dados a qualquer momento por nossos canais." },
+                  ],
+                },
+                site,
+                9999
+              )
+            )}
+          </>
+        )
         : (
           // Minimal fallback when no content was generated
           <div className="mx-auto max-w-4xl px-6 py-32 text-center">
@@ -568,7 +635,12 @@ function PreviewPage() {
             <a href={`mailto:${site.email}`} className="hover:text-gray-600 underline">{site.email}</a>
           </p>
         )}
-        <p className="mt-3 font-mono text-[10px] opacity-40">Criado com ADSPainel</p>
+        <div className="pt-4 border-t border-gray-200/60 mt-4 flex flex-col sm:flex-row items-center justify-between text-gray-400 text-[10px] gap-2">
+          <a href="#privacidade" className="hover:text-gray-600 underline">
+            Política de Privacidade (LGPD)
+          </a>
+          <span className="font-mono opacity-40">Criado com ADSPainel</span>
+        </div>
       </footer>
     </div>
   );

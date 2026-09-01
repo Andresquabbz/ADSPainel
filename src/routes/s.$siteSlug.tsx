@@ -10,6 +10,7 @@ import {
   MapPin,
   Construction,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import type { AnySection } from "@/components/editor/AddSectionModal";
 
@@ -288,6 +289,31 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             businessName={site.business_name || site.name}
           />
         ))}
+
+        {!allSections.some((s) => s.type === "privacy_policy" || s.type === "privacy") && (
+          <PublicSectionRenderer
+            section={{
+              type: "privacy_policy",
+              title: "Política de Privacidade",
+              subtitle: `Compromisso com a sua privacidade e conformidade com a LGPD (Lei nº 13.709/2018).`,
+              body: `A ${site.business_name || site.name} preza pela segurança, confidencialidade e transparência no tratamento dos dados pessoais de seus clientes e usuários, em total conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018). As informações coletadas voluntariamente através de nossos canais de atendimento são utilizadas unicamente para responder a solicitações, esclarecer dúvidas e viabilizar a prestação dos serviços contratados.`,
+              items: [
+                { title: "Coleta e Finalidade", description: "Utilizamos informações de contato exclusivamente para responder suas dúvidas, pedidos e orçamentos." },
+                { title: "Segurança das Informações", description: "Seus dados são protegidos com medidas adequadas e nunca comercializados com terceiros." },
+                { title: "Seus Direitos (LGPD)", description: "Você pode solicitar acesso, alteração ou exclusão dos seus dados a qualquer momento por nossos canais." },
+              ],
+            }}
+            siteId={site.id}
+            primaryColor={primary}
+            whatsapp={site.whatsapp || ""}
+            phone={site.phone || ""}
+            email={site.email || ""}
+            city={site.city || ""}
+            state={site.state || ""}
+            address={site.address || ""}
+            businessName={site.business_name || site.name}
+          />
+        )}
       </main>
 
       {/* ── Public Site Footer ── */}
@@ -316,9 +342,14 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             </p>
           )}
 
-          <div className="pt-6 border-t border-gray-200 mt-6 flex flex-col sm:flex-row items-center justify-between text-gray-400 text-[11px]">
+          <div className="pt-6 border-t border-gray-200 mt-6 flex flex-col sm:flex-row items-center justify-between text-gray-400 text-[11px] gap-2">
             <p>© {new Date().getFullYear()} {site.business_name || site.name}. Todos os direitos reservados.</p>
-            <p className="font-mono mt-2 sm:mt-0 opacity-60">Criado com ADSPainel</p>
+            <div className="flex items-center gap-4">
+              <a href="#privacidade" className="hover:text-gray-700 underline transition-colors">
+                Política de Privacidade
+              </a>
+              <span className="font-mono opacity-60">ADSPainel</span>
+            </div>
           </div>
         </div>
       </footer>
@@ -594,6 +625,50 @@ function PublicSectionRenderer({
           </div>
         </section>
       );
+
+    case "privacy_policy":
+    case "privacy": {
+      const items = (s.items as { title: string; description: string }[]) ?? [];
+      return (
+        <section id="privacidade" className="py-20 px-6 border-t border-gray-100 bg-gray-50/60">
+          <div className="max-w-4xl mx-auto space-y-8 text-center">
+            <div className="inline-flex items-center justify-center p-3 rounded-full mb-1" style={{ backgroundColor: primary + "15" }}>
+              <ShieldCheck className="h-7 w-7" style={{ color: primary }} />
+            </div>
+            <div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">
+                {String(s.title || "Política de Privacidade")}
+              </h2>
+              {s.subtitle && (
+                <p className="text-sm text-gray-500 mt-2 max-w-xl mx-auto leading-relaxed">
+                  {String(s.subtitle)}
+                </p>
+              )}
+            </div>
+
+            {s.body && (
+              <div className="bg-white border border-gray-200/80 rounded-2xl p-6 sm:p-8 text-sm text-gray-600 leading-relaxed shadow-sm text-left">
+                <p>{String(s.body)}</p>
+              </div>
+            )}
+
+            {items.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                {items.map((item, i) => (
+                  <div key={i} className="border border-gray-200/80 rounded-xl p-5 bg-white shadow-sm space-y-1.5">
+                    <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: primary }} />
+                      {item.title}
+                    </h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      );
+    }
 
     default:
       return null;

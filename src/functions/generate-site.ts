@@ -74,7 +74,8 @@ REGRAS OBRIGATÓRIAS:
 4. Mencione a cidade quando disponível para gerar conexão local
 5. Inclua 4 features com emojis relevantes ao nicho
 6. O about deve contar a história/missão de forma autêntica com 2-3 frases
-7. Gere entre 4 e 6 seções dependendo do nicho
+7. Gere entre 4 e 7 seções dependendo do nicho
+8. Inclua OBRIGATORIAMENTE uma seção do tipo "privacy_policy" em conformidade com a LGPD
 
 ESTRUTURA JSON ESPERADA:
 {
@@ -125,6 +126,17 @@ ESTRUTURA JSON ESPERADA:
     {
       "type": "contact",
       "title": "Título da seção de contato"
+    },
+    {
+      "type": "privacy_policy",
+      "title": "Política de Privacidade",
+      "subtitle": "Compromisso com a sua privacidade e segurança (LGPD).",
+      "body": "Texto profissional destacando a privacidade e segurança dos dados dos clientes.",
+      "items": [
+        { "title": "Coleta e Finalidade", "description": "Uso exclusivo para atendimento e orçamentos." },
+        { "title": "Segurança dos Dados", "description": "Proteção e sigilo das informações recebidas." },
+        { "title": "Direitos LGPD", "description": "Livre solicitação de exclusão ou alteração de dados." }
+      ]
     }
   ],
   "seo": {
@@ -133,7 +145,7 @@ ESTRUTURA JSON ESPERADA:
   }
 }
 
-ADAPTE as seções conforme o segmento (${input.category ?? "geral"}). Para restaurante: use menu_highlight. Para imobiliária: use categories. Inclua apenas seções que façam sentido para o negócio.`;
+ADAPTE as seções conforme o segmento (${input.category ?? "geral"}). Para restaurante: use menu_highlight. Para imobiliária: use categories. Inclua sempre a seção privacy_policy.`;
 }
 
 // ─── Server function ──────────────────────────────────────────────────────────
@@ -247,6 +259,25 @@ export const generateSite = createServerFn({ method: "POST" })
       // No API key — use template generator
       console.log("[AI] GEMINI_API_KEY not set, using template generator");
       sections = generatePageSections(input);
+    }
+
+    // ── Guarantee Privacy Policy section is present ─────────────────────────
+    const hasPrivacy = (sections as any[]).some(
+      (s: any) => s?.type === "privacy_policy" || s?.type === "privacy"
+    );
+    if (!hasPrivacy) {
+      (sections as any[]).push({
+        type: "privacy_policy",
+        title: "Política de Privacidade",
+        subtitle: `Compromisso com a sua privacidade e segurança na ${input.business_name || input.name}.`,
+        body: `A ${input.business_name || input.name} preza pela segurança, confidencialidade e transparência no tratamento dos dados pessoais de seus clientes e usuários, em total conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018). As informações coletadas voluntariamente por meio de nossos canais de atendimento são utilizadas unicamente para responder a solicitações, esclarecer dúvidas e viabilizar a prestação dos serviços contratados.`,
+        items: [
+          { title: "Coleta e Finalidade", description: "Coletamos apenas dados necessários (como nome, telefone e e-mail) fornecidos por você ao solicitar contato ou orçamento." },
+          { title: "Segurança das Informações", description: "Adotamos padrões rígidos para proteger seus dados contra acessos não autorizados, perdas ou divulgação indevida." },
+          { title: "Não Compartilhamento", description: "Seus dados pessoais nunca são comercializados ou compartilhados com terceiros sem seu expresso consentimento." },
+          { title: "Direitos do Titular (LGPD)", description: "Você pode solicitar a confirmação, correção ou exclusão dos seus dados a qualquer momento pelos nossos canais oficiais." },
+        ],
+      });
     }
 
     // ── 3. Create the site record ────────────────────────────────────────────

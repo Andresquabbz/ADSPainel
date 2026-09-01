@@ -530,6 +530,83 @@ export function SectionFormEditor({ section, onChange, onBack }: SectionFormEdit
           </p>
         </div>
       )}
+
+      {/* ── PRIVACY POLICY (LGPD) ──────────────────────────────────────────── */}
+      {(section.type === "privacy_policy" || section.type === "privacy") && (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Título da Seção</Label>
+            <Input
+              value={String(section.title ?? "")}
+              onChange={(e) => setProp("title", e.target.value)}
+              placeholder="Ex: Política de Privacidade"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Subtítulo</Label>
+            <Input
+              value={String(section.subtitle ?? "")}
+              onChange={(e) => setProp("subtitle", e.target.value)}
+              placeholder="Ex: Compromisso com a privacidade e conformidade com a LGPD."
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Texto Principal</Label>
+            <Textarea
+              value={String(section.body ?? "")}
+              onChange={(e) => setProp("body", e.target.value)}
+              placeholder="Texto descritivo sobre o tratamento e proteção de dados da empresa..."
+              rows={4}
+            />
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <Label className="label-mono text-muted-foreground">Tópicos da Política ({items.length})</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-primary"
+                onClick={() => addItem({ title: "Novo Tópico", description: "Descrição dos termos de privacidade..." })}
+              >
+                <Plus className="h-3 w-3 mr-1" /> Adicionar
+              </Button>
+            </div>
+
+            {items.map((item, idx) => (
+              <div key={idx} className="p-3 rounded-lg border border-border bg-card/50 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={String(item.title ?? "")}
+                    onChange={(e) => setItemProp(idx, "title", e.target.value)}
+                    placeholder="Título do tópico"
+                    className="flex-1 font-medium text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-destructive"
+                    onClick={() => removeItem(idx)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Textarea
+                  value={String(item.description ?? "")}
+                  onChange={(e) => setItemProp(idx, "description", e.target.value)}
+                  placeholder="Descrição do tópico..."
+                  rows={2}
+                  className="text-xs"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

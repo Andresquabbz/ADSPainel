@@ -427,5 +427,23 @@ const DEFAULT_TEMPLATE = (s: SiteInfo): Section[] => [
 /** Generate sections for the home page based on business niche. */
 export function generatePageSections(site: SiteInfo): Section[] {
   const template = TEMPLATES[site.category ?? ""] ?? DEFAULT_TEMPLATE;
-  return template(site);
+  const sections = template(site);
+
+  // Ensure privacy policy section is always present
+  if (!sections.some((s) => s.type === "privacy_policy" || s.type === "privacy")) {
+    sections.push({
+      type: "privacy_policy",
+      title: "Política de Privacidade",
+      subtitle: `Compromisso com a sua privacidade e segurança na ${site.business_name || site.name}.`,
+      body: `A ${site.business_name || site.name} preza pela segurança, confidencialidade e transparência no tratamento dos dados pessoais de seus clientes e usuários, em total conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018). As informações coletadas voluntariamente por meio de nossos canais de atendimento são utilizadas unicamente para responder a solicitações, esclarecer dúvidas e viabilizar a prestação dos serviços contratados.`,
+      items: [
+        { title: "Coleta e Finalidade", description: "Coletamos apenas dados necessários (como nome, telefone e e-mail) fornecidos por você ao solicitar contato ou orçamento." },
+        { title: "Segurança das Informações", description: "Adotamos padrões rígidos para proteger seus dados contra acessos não autorizados, perdas ou divulgação indevida." },
+        { title: "Não Compartilhamento", description: "Seus dados pessoais nunca são comercializados ou compartilhados com terceiros sem seu expresso consentimento." },
+        { title: "Direitos do Titular (LGPD)", description: "Você pode solicitar a confirmação, correção ou exclusão dos seus dados a qualquer momento pelos nossos canais oficiais." },
+      ],
+    });
+  }
+
+  return sections;
 }

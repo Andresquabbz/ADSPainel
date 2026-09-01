@@ -16,6 +16,7 @@ import {
   Grid,
   HelpCircle,
   PhoneCall,
+  ShieldCheck,
   Plus,
 } from "lucide-react";
 
@@ -181,6 +182,24 @@ const TEMPLATE_OPTIONS: SectionTemplateOption[] = [
     defaultData: () => ({
       type: "contact",
       title: "Entre em Contato Conosco",
+    }),
+  },
+  {
+    type: "privacy_policy",
+    title: "Política de Privacidade (LGPD)",
+    description: "Declaração de privacidade, segurança e proteção de dados em conformidade com a LGPD.",
+    icon: ShieldCheck,
+    defaultData: (name) => ({
+      type: "privacy_policy",
+      title: "Política de Privacidade",
+      subtitle: `Compromisso com a sua privacidade e segurança na ${name}.`,
+      body: `A ${name} valoriza a sua privacidade. Os dados fornecidos através dos nossos canais de atendimento (como nome, telefone e e-mail) são utilizados exclusivamente para responder às suas solicitações, orçamentos e prestar nossos serviços com segurança, em total conformidade com a LGPD (Lei nº 13.709/2018).`,
+      items: [
+        { title: "Finalidade da Coleta", description: "Utilizamos suas informações apenas para contato direto, esclarecimento de dúvidas e prestação dos serviços solicitados." },
+        { title: "Segurança dos Dados", description: "Seus dados são protegidos com medidas adequadas e nunca são vendidos ou compartilhados com terceiros sem autorização." },
+        { title: "Direitos do Titular", description: "Você tem o direito de solicitar confirmação, correção ou exclusão dos seus dados a qualquer momento por nossos canais." },
+        { title: "Contato Oficial", description: "Para quaisquer esclarecimentos sobre privacidade, entre em contato diretamente pelo nosso WhatsApp ou e-mail." },
+      ],
     }),
   },
 ];

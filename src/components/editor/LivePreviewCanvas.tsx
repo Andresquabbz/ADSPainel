@@ -5,6 +5,7 @@ import {
   MessageCircle,
   Mail,
   MapPin,
+  ShieldCheck,
 } from "lucide-react";
 
 interface LivePreviewCanvasProps {
@@ -143,6 +144,36 @@ export function LivePreviewCanvas({
             );
           })}
 
+          {!sections.some((s) => s.type === "privacy_policy" || s.type === "privacy") && (
+            <div className="relative group border-2 border-transparent">
+              {renderSectionContent(
+                {
+                  type: "privacy_policy",
+                  title: "Política de Privacidade",
+                  subtitle: `Compromisso com a sua privacidade e conformidade com a LGPD.`,
+                  body: `A ${businessName || name || "Empresa"} preza pela segurança, confidencialidade e transparência no tratamento dos dados pessoais de seus clientes e usuários, em conformidade com a Lei Geral de Proteção de Dados (LGPD).`,
+                  items: [
+                    { title: "Coleta e Finalidade", description: "Dados utilizados exclusivamente para atendimento e prestação dos serviços solicitados." },
+                    { title: "Proteção de Dados", description: "Garantia de sigilo e não compartilhamento indevido com terceiros." },
+                    { title: "Direitos do Titular", description: "Livre solicitação de exclusão ou atualização de dados pessoais." },
+                  ],
+                },
+                {
+                  primaryColor,
+                  fontFamily,
+                  name: name || businessName,
+                  businessName,
+                  whatsapp,
+                  phone,
+                  email,
+                  city,
+                  state,
+                  address,
+                }
+              )}
+            </div>
+          )}
+
           {sections.length === 0 && (
             <div className="py-24 text-center px-4">
               <p className="text-gray-400 text-sm">Nenhuma seção adicionada ainda.</p>
@@ -173,9 +204,12 @@ export function LivePreviewCanvas({
             </p>
           )}
 
-          <p className="mt-4 font-mono text-[10px] text-gray-400">
-            Criado com ADSPainel
-          </p>
+          <div className="pt-4 border-t border-gray-200/60 mt-4 flex flex-col sm:flex-row items-center justify-between text-gray-400 text-[10px] gap-2">
+            <a href="#privacidade" className="hover:text-gray-700 underline transition-colors">
+              Política de Privacidade (LGPD)
+            </a>
+            <span className="font-mono opacity-60">Criado com ADSPainel</span>
+          </div>
         </footer>
       </div>
     </main>
@@ -442,6 +476,50 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
           </div>
         </section>
       );
+
+    case "privacy_policy":
+    case "privacy": {
+      const items = (s.items as { title: string; description: string }[]) ?? [];
+      return (
+        <section id="privacidade" className="py-16 px-6 border-t border-gray-100 bg-gray-50/60">
+          <div className="max-w-3xl mx-auto space-y-6 text-center">
+            <div className="inline-flex items-center justify-center p-2.5 rounded-full mb-1" style={{ backgroundColor: primary + "15" }}>
+              <ShieldCheck className="h-6 w-6" style={{ color: primary }} />
+            </div>
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
+                {String(s.title || "Política de Privacidade")}
+              </h2>
+              {s.subtitle && (
+                <p className="text-xs text-gray-500 mt-1.5 max-w-lg mx-auto leading-relaxed">
+                  {String(s.subtitle)}
+                </p>
+              )}
+            </div>
+
+            {s.body && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 text-xs text-gray-600 leading-relaxed shadow-sm text-left">
+                <p>{String(s.body)}</p>
+              </div>
+            )}
+
+            {items.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                {items.map((item, i) => (
+                  <div key={i} className="border border-gray-200/80 rounded-xl p-4 bg-white shadow-sm space-y-1">
+                    <h3 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: primary }} />
+                      {item.title}
+                    </h3>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      );
+    }
 
     default:
       return (
