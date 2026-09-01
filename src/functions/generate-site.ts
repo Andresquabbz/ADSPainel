@@ -307,45 +307,8 @@ export const generateSite = createServerFn({ method: "POST" })
       console.error("[generate-site] page insert error:", pageError.message);
     }
 
-    // ── 5. Debit 2.5 tokens (exempt super admin) ────────────────────────────
-    if (!isSuperAdmin) {
-      const { data: freshProfile } = await supabase
-        .from("profiles")
-        .select("token_balance")
-        .eq("id", userId)
-        .single();
-
-      const currentBal = Number(freshProfile?.token_balance ?? currentBalance) || 0;
-      const newBalance = Math.max(0, currentBal - TOKEN_COST);
-
-      const { error: updateErr } = await supabase
-        .from("profiles")
-        .update({
-          token_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
-
-      if (updateErr) {
-        console.error("[generate-site] Error updating balance:", updateErr);
-      }
-
-      try {
-        await supabase.from("token_transactions").insert({
-          user_id: userId,
-          type: "generation",
-          amount: -TOKEN_COST,
-          balance_after: newBalance,
-          description: `Geração de site: ${input.name}`,
-        });
-      } catch (txErr) {
-        console.error("[generate-site] Transaction log error (ignored):", txErr);
-      }
-
-      console.log(`[generate-site] Debited ${TOKEN_COST} tokens from user ${userId}. Balance: ${currentBal} -> ${newBalance}`);
-    } else {
-      console.log(`[generate-site] Super admin generation for ${userEmail}: tokens infinitos (sem débito).`);
-    }
+    // ── 5. Site created successfully (tokens debited on client upon completion) ──
+    console.log(`[generate-site] Site generated successfully for user ${userId}: ${input.name} (${sections.length} seções)`);
 
     // ── 6. Return result ─────────────────────────────────────────────────────
     return {

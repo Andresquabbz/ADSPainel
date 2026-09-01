@@ -215,6 +215,23 @@ export function CreateSiteWizard({
 
   // ── Generate (calls server fn) ─────────────────────────────────────
   async function handleGenerate() {
+    // 1. Verify token balance before starting generation
+    const { data: curProfBefore } = await supabase
+      .from("profiles")
+      .select("token_balance")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const balBefore = Number(curProfBefore?.token_balance) || 0;
+    if (balBefore < 2.5) {
+      toast.warning("Saldo insuficiente", {
+        description: `Você possui ${balBefore.toLocaleString("pt-BR")} tokens. É necessário ter pelo menos 2,5 tokens para gerar um site. Escolha um pacote para recarregar.`,
+      });
+      handleClose();
+      onOpenBuyTokens?.();
+      return;
+    }
+
     setStep("generating");
     try {
       const result = await generateSite({
@@ -235,33 +252,49 @@ export function CreateSiteWizard({
         },
       });
 
-      const SUPER_ADMIN_EMAILS = ["andre.jesus.rocha@gmail.com"];
-      const { data: curProf } = await supabase
+      // 2. Deduct 2.5 tokens from profile in Supabase database
+      const newBal = Math.max(0, balBefore - 2.5);
+
+      const { error: updErr } = await supabase
         .from("profiles")
-        .select("email")
-        .eq("id", userId)
-        .maybeSingle();
+        .update({
+          token_balance: newBal,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
 
-      const isSuperAdmin = SUPER_ADMIN_EMAILS.includes((curProf?.email || "").toLowerCase());
-
-      if (!isSuperAdmin) {
-        queryClient.setQueryData(["profile", userId], (old: any) => {
-          if (!old) return old;
-          return {
-            ...old,
-            token_balance: Math.max(0, (Number(old.token_balance) || 0) - 2.5),
-          };
-        });
+      if (updErr) {
+        console.error("[Wizard] Erro ao atualizar saldo:", updErr);
       }
+
+      // 3. Record transaction in token_transactions
+      try {
+        await supabase.from("token_transactions").insert({
+          user_id: userId,
+          type: "generation",
+          amount: -2.5,
+          balance_after: newBal,
+          description: `Geração de site: ${data.name.trim()}`,
+        });
+      } catch (txErr) {
+        console.error("[Wizard] Erro ao gravar transação:", txErr);
+      }
+
+      // 4. Update local query cache immediately so balance updates in UI without waiting
+      queryClient.setQueryData(["profile", userId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          token_balance: newBal,
+        };
+      });
 
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
       await queryClient.invalidateQueries({ queryKey: ["token_transactions"] });
 
       toast.success("Site gerado com sucesso! 🎉", {
-        description: isSuperAdmin
-          ? `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"} (Super Admin: tokens infinitos).`
-          : `${result.sectionsCount} seções criadas${result.usedAI ? " com IA" : " por template"}. Foram debitados 2,5 tokens.`,
+        description: `${result.sectionsCount} seções criadas. Foram debitados 2,5 tokens (Saldo: ${newBal.toLocaleString("pt-BR")} tokens).`,
       });
       handleClose();
       navigate({ to: "/editor/$siteId", params: { siteId: result.siteId } });
