@@ -252,40 +252,15 @@ export function CreateSiteWizard({
         },
       });
 
-      // 2. Deduct 2.5 tokens from profile in Supabase database
-      const newBal = Math.max(0, balBefore - 2.5);
+      // 2. The server already deducted 2.5 tokens in Supabase using adminClient (service role).
+      const finalBal = typeof result.newBalance === "number" ? result.newBalance : Math.max(0, balBefore - 2.5);
 
-      const { error: updErr } = await supabase
-        .from("profiles")
-        .update({
-          token_balance: newBal,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
-
-      if (updErr) {
-        console.error("[Wizard] Erro ao atualizar saldo:", updErr);
-      }
-
-      // 3. Record transaction in token_transactions
-      try {
-        await supabase.from("token_transactions").insert({
-          user_id: userId,
-          type: "generation",
-          amount: -2.5,
-          balance_after: newBal,
-          description: `Geração de site: ${data.name.trim()}`,
-        });
-      } catch (txErr) {
-        console.error("[Wizard] Erro ao gravar transação:", txErr);
-      }
-
-      // 4. Update local query cache immediately so balance updates in UI without waiting
+      // 3. Update local query cache immediately so balance updates in UI without waiting
       queryClient.setQueryData(["profile", userId], (old: any) => {
         if (!old) return old;
         return {
           ...old,
-          token_balance: newBal,
+          token_balance: finalBal,
         };
       });
 
@@ -294,7 +269,7 @@ export function CreateSiteWizard({
       await queryClient.invalidateQueries({ queryKey: ["token_transactions"] });
 
       toast.success("Site gerado com sucesso! 🎉", {
-        description: `${result.sectionsCount} seções criadas. Foram debitados 2,5 tokens (Saldo: ${newBal.toLocaleString("pt-BR")} tokens).`,
+        description: `${result.sectionsCount} seções criadas. Foram debitados 2,5 tokens (Saldo: ${finalBal.toLocaleString("pt-BR")} tokens).`,
       });
       handleClose();
       navigate({ to: "/editor/$siteId", params: { siteId: result.siteId } });

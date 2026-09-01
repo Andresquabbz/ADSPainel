@@ -47,8 +47,17 @@ export const creditPurchasedTokens = createServerFn({ method: "POST" })
       }
     }
 
-    // 2. Fetch current profile balance
-    const { data: profile, error: profileError } = await supabase
+    // 2. Use adminClient (service role) to update profile balance reliably
+    const SUPABASE_URL = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+    const SUPABASE_KEY =
+      process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+      process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+      process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const adminClient = createClient(SUPABASE_URL!, SUPABASE_KEY!);
+
+    const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("token_balance")
       .eq("id", userId)
@@ -58,12 +67,16 @@ export const creditPurchasedTokens = createServerFn({ method: "POST" })
       throw new Error("Perfil não encontrado.");
     }
 
-    const newBalance = profile.token_balance + input.tokens;
+    const currentBal = Number(profile.token_balance) || 0;
+    const newBalance = currentBal + input.tokens;
 
     // 3. Update profile
-    await supabase
+    await adminClient
       .from("profiles")
-      .update({ token_balance: newBalance })
+      .update({
+        token_balance: newBalance,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", userId);
 
     // 4. Log transaction
@@ -71,7 +84,7 @@ export const creditPurchasedTokens = createServerFn({ method: "POST" })
       ? `Compra de tokens via Mercado Pago Pix (${input.tokens} tokens - Ref: ${input.paymentId})`
       : `Compra de tokens via Mercado Pago Pix (${input.tokens} tokens)`;
 
-    await supabase.from("token_transactions").insert({
+    await adminClient.from("token_transactions").insert({
       user_id: userId,
       type: "purchase",
       amount: input.tokens,

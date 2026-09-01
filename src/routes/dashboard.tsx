@@ -12,6 +12,7 @@ import { SiteCard } from "@/components/dashboard/SiteCard";
 import { CreateSiteWizard } from "@/components/dashboard/CreateSiteWizard";
 import { BuyTokensDialog } from "@/components/dashboard/BuyTokensDialog";
 import { creditPurchasedTokens } from "@/functions/credit-purchased-tokens";
+import { adminRefillTokens } from "@/functions/admin-refill-tokens";
 import { TOKEN_CONFIG } from "@/config/tokens";
 
 export const Route = createFileRoute("/dashboard")({
@@ -324,18 +325,18 @@ function DashboardPage() {
                   size="sm"
                   className="h-6 px-2 text-[10px] font-mono text-emerald-600 border-emerald-300 hover:bg-emerald-50"
                   onClick={async () => {
-                    const newBal = tokenBalance + 50;
-                    await supabase.from("profiles").update({ token_balance: newBal }).eq("id", user.id);
-                    await supabase.from("token_transactions").insert({
-                      user_id: user.id,
-                      type: "admin",
-                      amount: 50,
-                      balance_after: newBal,
-                      description: "Recarga Super Admin (+50 tokens)",
-                    });
-                    queryClient.invalidateQueries({ queryKey: ["profile"] });
-                    queryClient.invalidateQueries({ queryKey: ["token_transactions"] });
-                    toast.success("50 tokens adicionados ao seu saldo! ⚡");
+                    try {
+                      const res = await adminRefillTokens({ data: { amount: 50 } });
+                      queryClient.setQueryData(["profile", user.id], (old: any) => {
+                        if (!old) return old;
+                        return { ...old, token_balance: res.newBalance };
+                      });
+                      await queryClient.invalidateQueries({ queryKey: ["profile"] });
+                      await queryClient.invalidateQueries({ queryKey: ["token_transactions"] });
+                      toast.success("50 tokens adicionados ao seu saldo! ⚡");
+                    } catch (e: any) {
+                      toast.error(e.message || "Erro ao recarregar tokens.");
+                    }
                   }}
                 >
                   +50 Tokens (Admin)

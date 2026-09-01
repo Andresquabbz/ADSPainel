@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generatePageSections } from "@/lib/content-generator";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { findAvailableSlug } from "@/lib/slug";
+import type { Database } from "@/integrations/supabase/types";
 
 // ─── Input schema (Strict & Sanitized) ────────────────────────────────────────
 
@@ -307,8 +308,55 @@ export const generateSite = createServerFn({ method: "POST" })
       console.error("[generate-site] page insert error:", pageError.message);
     }
 
-    // ── 5. Site created successfully (tokens debited on client upon completion) ──
-    console.log(`[generate-site] Site generated successfully for user ${userId}: ${input.name} (${sections.length} seções)`);
+    // ── 5. Debit 2.5 tokens using adminClient (bypasses RLS) ────────────────
+    const SUPABASE_URL = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+    const SUPABASE_KEY =
+      process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+      process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+      process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+
+    let newBalance = Math.max(0, currentBalance - TOKEN_COST);
+
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      const { createClient } = await import("@supabase/supabase-js");
+      const adminClient = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
+
+      const { data: freshProf } = await adminClient
+        .from("profiles")
+        .select("token_balance")
+        .eq("id", userId)
+        .single();
+
+      const latestBal = Number(freshProf?.token_balance ?? currentBalance) || 0;
+      // If a database trigger already decremented, use it; otherwise deduct 2.5 tokens:
+      newBalance = latestBal < currentBalance ? latestBal : Math.max(0, latestBal - TOKEN_COST);
+
+      const { error: updErr } = await adminClient
+        .from("profiles")
+        .update({
+          token_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (updErr) {
+        console.error("[generate-site] Admin client error updating balance:", updErr);
+      } else {
+        console.log(`[generate-site] Successfully debited tokens: ${latestBal} -> ${newBalance}`);
+      }
+
+      try {
+        await adminClient.from("token_transactions").insert({
+          user_id: userId,
+          type: "generation",
+          amount: -TOKEN_COST,
+          balance_after: newBalance,
+          description: `Geração de site: ${input.name}`,
+        });
+      } catch (txErr) {
+        console.error("[generate-site] Transaction log error (ignored):", txErr);
+      }
+    }
 
     // ── 6. Return result ─────────────────────────────────────────────────────
     return {
@@ -316,5 +364,6 @@ export const generateSite = createServerFn({ method: "POST" })
       siteId: site.id,
       sectionsCount: sections.length,
       usedAI: !!GEMINI_KEY,
+      newBalance,
     };
   });
