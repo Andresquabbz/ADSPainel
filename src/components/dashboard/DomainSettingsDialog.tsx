@@ -28,6 +28,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { subdomainFor, APP_CONFIG } from "@/config/app";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanSlug, validateSlug } from "@/lib/slug";
+import {
+  addCustomDomain,
+  removeCustomDomain,
+  verifyCustomDomain,
+} from "@/functions/manage-custom-domain";
 
 interface DomainSettingsDialogProps {
   open: boolean;
@@ -178,10 +183,9 @@ export function DomainSettingsDialog({
     }
   }
 
-  // ── 2. Save / Connect Custom Domain ─────────────────────────────────────
+  // ── 2. Save / Connect Custom Domain (Automated Vercel API) ─────────────
   async function handleSaveCustomDomain() {
     const raw = customDomainInput.trim().toLowerCase();
-    // Clean protocol and trailing slashes
     const cleaned = raw.replace(/^https?:\/\//, "").replace(/\/+$/, "").trim();
 
     if (!cleaned || !cleaned.includes(".")) {
@@ -189,68 +193,26 @@ export function DomainSettingsDialog({
       return;
     }
 
-    if (!siteId || !userId) {
-      toast.error("Identificação do site ou usuário ausente.");
+    if (!siteId) {
+      toast.error("Identificação do site ausente.");
       return;
     }
 
     setSavingDomain(true);
     try {
-      // 1. Save or update in domains table
-      if (savedDomain?.id) {
-        const { data, error } = await supabase
-          .from("domains")
-          .update({
-            domain: cleaned,
-            status: "pending",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", savedDomain.id)
-          .select()
-          .single();
+      const res = await addCustomDomain({
+        data: {
+          siteId,
+          domain: cleaned,
+        },
+      });
 
-        if (error) throw error;
-        setSavedDomain(data as DomainRecord);
-      } else {
-        const { data, error } = await supabase
-          .from("domains")
-          .insert({
-            user_id: userId,
-            site_id: siteId,
-            domain: cleaned,
-            record_type: "CNAME",
-            status: "pending",
-            is_primary: true,
-            ssl_active: false,
-          })
-          .select()
-          .single();
+      await loadDomain();
 
-        if (error) throw error;
-        setSavedDomain(data as DomainRecord);
-      }
-
-      // 2. Also save into site.content for redundancy
-      const { data: siteData } = await supabase
-        .from("sites")
-        .select("content")
-        .eq("id", siteId)
-        .single();
-
-      const existingContent = (siteData?.content as Record<string, unknown>) || {};
-      await supabase
-        .from("sites")
-        .update({
-          content: {
-            ...existingContent,
-            custom_domain: cleaned,
-          },
-        })
-        .eq("id", siteId);
-
-      toast.success("Domínio salvo com sucesso!", {
-        description:
-          "Agora crie o apontamento CNAME no seu provedor de DNS para concluir a ativação.",
+      toast.success("Domínio configurado com sucesso! 🎉", {
+        description: res?.verified
+          ? "Domínio verificado e ativo na Vercel!"
+          : "Domínio cadastrado na Vercel. Crie o apontamento CNAME para concluir.",
       });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erro ao salvar domínio.";
@@ -260,47 +222,29 @@ export function DomainSettingsDialog({
     }
   }
 
-  // ── 3. Check DNS Propagation via Google DNS DoH ─────────────────────────
+  // ── 3. Check DNS Propagation & Vercel SSL ────────────────────────────────
   async function handleVerifyDns() {
     const domainToCheck = savedDomain?.domain || customDomainInput.trim().toLowerCase();
-    if (!domainToCheck) return;
+    if (!domainToCheck || !siteId) return;
 
     setCheckingDns(true);
     try {
-      const res = await fetch(
-        `https://dns.google/resolve?name=${encodeURIComponent(domainToCheck)}&type=CNAME`
-      );
+      const res = await verifyCustomDomain({
+        data: {
+          siteId,
+          domain: domainToCheck,
+        },
+      });
 
-      if (!res.ok) throw new Error("Não foi possível consultar o DNS agora.");
-      const json = await res.json() as {
-        Answer?: { name: string; type: number; data: string }[];
-        Status: number;
-      };
+      await loadDomain();
 
-      const cnameRecords = json.Answer?.map((a) => a.data.replace(/\.$/, "").toLowerCase()) || [];
-      const expectedTarget = APP_CONFIG.cnameTarget.toLowerCase();
-
-      const isPointing = cnameRecords.some((val) =>
-        val.includes(expectedTarget) || val.includes("adspainel.site") || val.includes("adspainel.com")
-      );
-
-      if (isPointing) {
-        if (savedDomain?.id) {
-          await supabase
-            .from("domains")
-            .update({ status: "active", ssl_active: true })
-            .eq("id", savedDomain.id);
-
-          setSavedDomain((prev) =>
-            prev ? { ...prev, status: "active" as any, ssl_active: true } : null
-          );
-        }
-        toast.success("Apontamento DNS verificado com sucesso! 🎉", {
-          description: `O domínio ${domainToCheck} está apontando corretamente.`,
+      if (res?.verified) {
+        toast.success("Apontamento DNS e SSL verificados com sucesso! 🎉", {
+          description: `O domínio ${domainToCheck} está 100% online e seguro.`,
         });
       } else {
-        toast.warning("Apontamento CNAME ainda não detectado.", {
-          description: `Aponte o CNAME para ${APP_CONFIG.cnameTarget}. Lembre-se de que a propagação de DNS pode levar até 24 horas.`,
+        toast.warning("Apontamento CNAME em propagação.", {
+          description: `Aponte o CNAME para ${APP_CONFIG.cnameTarget}. A Vercel está emitindo o certificado SSL.`,
         });
       }
     } catch {
@@ -310,28 +254,17 @@ export function DomainSettingsDialog({
     }
   }
 
-  // ── 4. Remove / Disconnect Domain ───────────────────────────────────────
+  // ── 4. Remove / Disconnect Domain (Vercel + Database) ───────────────────
   async function handleRemoveDomain() {
-    if (!savedDomain?.id) return;
+    if (!savedDomain?.domain || !siteId) return;
     setSavingDomain(true);
     try {
-      const { error } = await supabase.from("domains").delete().eq("id", savedDomain.id);
-      if (error) throw error;
-
-      if (siteId) {
-        const { data: siteData } = await supabase
-          .from("sites")
-          .select("content")
-          .eq("id", siteId)
-          .single();
-
-        const existingContent = (siteData?.content as Record<string, unknown>) || {};
-        delete existingContent["custom_domain"];
-        await supabase
-          .from("sites")
-          .update({ content: existingContent as any })
-          .eq("id", siteId);
-      }
+      await removeCustomDomain({
+        data: {
+          siteId,
+          domain: savedDomain.domain,
+        },
+      });
 
       setSavedDomain(null);
       setCustomDomainInput("");
