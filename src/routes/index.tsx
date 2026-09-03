@@ -51,24 +51,35 @@ export const Route = createFileRoute("/")({
       }
     }
     const rootDomain = "adspainel.site";
-    let subdomain: string | null = null;
-    if (host.includes(`.${rootDomain}`)) {
-      const hostWithoutPort = host.split(":")[0] || "";
+    let identifier: string | null = null;
+    const hostWithoutPort = (host || "").split(":")[0].toLowerCase();
+
+    if (hostWithoutPort.includes(`.${rootDomain}`)) {
       if (hostWithoutPort.endsWith(`.${rootDomain}`)) {
         const sub = hostWithoutPort.slice(0, -(rootDomain.length + 1));
         const reserved = ["www", "app", "api", "admin", "mail", "cdn", "preview"];
         if (sub && !reserved.includes(sub)) {
-          subdomain = sub;
+          identifier = sub;
         }
       }
+    } else if (
+      hostWithoutPort &&
+      !hostWithoutPort.includes("localhost") &&
+      !hostWithoutPort.includes("127.0.0.1") &&
+      !hostWithoutPort.endsWith("adspainel.site") &&
+      !hostWithoutPort.endsWith("vercel.app")
+    ) {
+      identifier = hostWithoutPort;
     }
 
-    if (subdomain) {
+    if (identifier) {
       try {
-        const siteData = await getPublicSite({ data: subdomain });
-        return { subdomain, siteData };
+        const siteData = await getPublicSite({ data: identifier });
+        if (siteData?.site) {
+          return { subdomain: identifier, siteData };
+        }
       } catch {
-        return { subdomain, siteData: null };
+        return { subdomain: null, siteData: null };
       }
     }
 

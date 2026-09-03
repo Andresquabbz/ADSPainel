@@ -33,14 +33,40 @@ export const getPublicSite = createServerFn({ method: "GET" })
       }
     } catch {}
 
-    // 2. Fetch site by slug
-    const { data: site, error: siteError } = await supabase
+    // 2. Fetch site by slug or custom domain
+    let site: any = null;
+
+    const { data: siteBySlug } = await supabase
       .from("sites")
       .select("*")
       .eq("slug", slug)
       .maybeSingle();
 
-    if (siteError || !site) {
+    if (siteBySlug) {
+      site = siteBySlug;
+    } else {
+      // Check in domains table
+      const cleanDom = slug.toLowerCase().trim();
+      const withWww = cleanDom.startsWith("www.") ? cleanDom : `www.${cleanDom}`;
+      const withoutWww = cleanDom.replace(/^www\./, "");
+
+      const { data: domRecord } = await supabase
+        .from("domains")
+        .select("site_id")
+        .or(`domain.eq.${cleanDom},domain.eq.${withWww},domain.eq.${withoutWww}`)
+        .maybeSingle();
+
+      if (domRecord?.site_id) {
+        const { data: foundSite } = await supabase
+          .from("sites")
+          .select("*")
+          .eq("id", domRecord.site_id)
+          .maybeSingle();
+        if (foundSite) site = foundSite;
+      }
+    }
+
+    if (!site) {
       return { site: null, pages: [], isPublished: false };
     }
 
