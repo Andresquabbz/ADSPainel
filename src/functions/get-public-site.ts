@@ -64,6 +64,26 @@ export const getPublicSite = createServerFn({ method: "GET" })
           .maybeSingle();
         if (foundSite) site = foundSite;
       }
+
+      // Check in sites content->custom_domain
+      if (!site) {
+        const { data: siteByContent } = await supabase
+          .from("sites")
+          .select("*")
+          .contains("content", { custom_domain: withoutWww })
+          .maybeSingle();
+
+        if (siteByContent) {
+          site = siteByContent;
+        } else {
+          const { data: siteByContentWww } = await supabase
+            .from("sites")
+            .select("*")
+            .contains("content", { custom_domain: withWww })
+            .maybeSingle();
+          if (siteByContentWww) site = siteByContentWww;
+        }
+      }
     }
 
     if (!site) {
