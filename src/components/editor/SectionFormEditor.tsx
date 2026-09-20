@@ -607,6 +607,400 @@ export function SectionFormEditor({ section, onChange, onBack }: SectionFormEdit
           </div>
         </div>
       )}
+
+      {/* ── MISSION / NOSSA MISSÃO ─────────────────────────────────────────── */}
+      {section.type === "mission" && (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Título da Seção *</Label>
+            <Input
+              value={String(section.title ?? "Nossa Missão")}
+              onChange={(e) => setProp("title", e.target.value)}
+              placeholder="Ex: Nossa Missão"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Declaração da Missão *</Label>
+            <Textarea
+              value={String(section.description ?? "")}
+              onChange={(e) => setProp("description", e.target.value)}
+              placeholder="Descreva a missão e os valores fundamentais da sua organização..."
+              rows={4}
+            />
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <Label className="label-mono text-muted-foreground">Pilares Institucionais ({((section.pillars as any[]) || []).length})</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-primary"
+                onClick={() => {
+                  const pillars = Array.isArray(section.pillars) ? [...section.pillars] : [];
+                  pillars.push({ title: "Novo Pilar", description: "Descrição do pilar institucional..." });
+                  setProp("pillars", pillars);
+                }}
+              >
+                <Plus className="h-3 w-3 mr-1" /> Adicionar Pilar
+              </Button>
+            </div>
+
+            {((section.pillars as any[]) || []).map((pillar, idx) => (
+              <div key={idx} className="p-3 rounded-lg border border-border bg-card/50 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={String(pillar.title ?? "")}
+                    onChange={(e) => {
+                      const pillars = [...(section.pillars as any[])];
+                      pillars[idx] = { ...pillars[idx], title: e.target.value };
+                      setProp("pillars", pillars);
+                    }}
+                    placeholder="Título do pilar"
+                    className="flex-1 font-medium text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-destructive"
+                    onClick={() => {
+                      const pillars = (section.pillars as any[]).filter((_, i) => i !== idx);
+                      setProp("pillars", pillars);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Textarea
+                  value={String(pillar.description ?? "")}
+                  onChange={(e) => {
+                    const pillars = [...(section.pillars as any[])];
+                    pillars[idx] = { ...pillars[idx], description: e.target.value };
+                    setProp("pillars", pillars);
+                  }}
+                  placeholder="Descrição do pilar..."
+                  rows={2}
+                  className="text-xs"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── COMPANY SERVICES / SERVIÇOS DINÂMICOS ──────────────────────────── */}
+      {section.type === "company_services" && (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Título da Seção *</Label>
+            <Input
+              value={String(section.title ?? "Nossos Serviços")}
+              onChange={(e) => setProp("title", e.target.value)}
+              placeholder="Ex: Nossos Serviços"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Subtítulo</Label>
+            <Input
+              value={String(section.subtitle ?? "")}
+              onChange={(e) => setProp("subtitle", e.target.value)}
+              placeholder="Ex: Soluções completas e planejadas para sua empresa."
+            />
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <Label className="label-mono text-muted-foreground">Lista de Serviços ({items.length})</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-primary"
+                onClick={() =>
+                  addItem({
+                    id: `srv-${Date.now()}`,
+                    name: "Novo Serviço",
+                    description: "Descrição detalhada do serviço prestado.",
+                    icon: "Briefcase",
+                    category: "Geral",
+                    link: "#contato",
+                    status: "active",
+                  })
+                }
+              >
+                <Plus className="h-3 w-3 mr-1" /> Adicionar Serviço
+              </Button>
+            </div>
+
+            {items.map((srv, idx) => (
+              <div key={idx} className="p-3 rounded-lg border border-border bg-card/50 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={String(srv.name ?? "")}
+                    onChange={(e) => setItemProp(idx, "name", e.target.value)}
+                    placeholder="Nome do serviço"
+                    className="flex-1 font-semibold text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-destructive"
+                    onClick={() => removeItem(idx)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={String(srv.category ?? "")}
+                    onChange={(e) => setItemProp(idx, "category", e.target.value)}
+                    placeholder="Categoria (ex: Consultoria)"
+                    className="h-8 text-xs"
+                  />
+                  <Input
+                    value={String(srv.link ?? "")}
+                    onChange={(e) => setItemProp(idx, "link", e.target.value)}
+                    placeholder="Link (ex: #contato)"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <Textarea
+                  value={String(srv.description ?? "")}
+                  onChange={(e) => setItemProp(idx, "description", e.target.value)}
+                  placeholder="Descrição do serviço..."
+                  rows={2}
+                  className="text-xs"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── COMPANY INFO / FICHA CADASTRAL ─────────────────────────────────── */}
+      {section.type === "company_info" && (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Título da Seção *</Label>
+            <Input
+              value={String(section.title ?? "Informações da Empresa")}
+              onChange={(e) => setProp("title", e.target.value)}
+              placeholder="Ex: Informações da Empresa"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Subtítulo</Label>
+            <Input
+              value={String(section.subtitle ?? "")}
+              onChange={(e) => setProp("subtitle", e.target.value)}
+              placeholder="Ex: Ficha cadastral oficial para sua total segurança e transparência."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Razão Social</Label>
+              <Input
+                value={String(section.legal_name ?? "")}
+                onChange={(e) => setProp("legal_name", e.target.value)}
+                placeholder="Razão social"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Nome Fantasia</Label>
+              <Input
+                value={String(section.fantasy_name ?? "")}
+                onChange={(e) => setProp("fantasy_name", e.target.value)}
+                placeholder="Nome fantasia"
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">CNPJ</Label>
+              <Input
+                value={String(section.cnpj ?? "")}
+                onChange={(e) => setProp("cnpj", e.target.value)}
+                placeholder="00.000.000/0001-00"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Data de Abertura</Label>
+              <Input
+                value={String(section.opening_date ?? "")}
+                onChange={(e) => setProp("opening_date", e.target.value)}
+                placeholder="15/03/2018"
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Porte</Label>
+              <Input
+                value={String(section.company_size ?? "")}
+                onChange={(e) => setProp("company_size", e.target.value)}
+                placeholder="Demais / EPP / ME"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Situação Cadastral</Label>
+              <Input
+                value={String(section.registration_status ?? "")}
+                onChange={(e) => setProp("registration_status", e.target.value)}
+                placeholder="Ativa"
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="label-mono text-xs text-muted-foreground">Natureza Jurídica</Label>
+            <Input
+              value={String(section.legal_nature ?? "")}
+              onChange={(e) => setProp("legal_nature", e.target.value)}
+              placeholder="206-2 - Sociedade Empresária Limitada"
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Tipo de Empresa</Label>
+              <Input
+                value={String(section.company_type ?? "")}
+                onChange={(e) => setProp("company_type", e.target.value)}
+                placeholder="Matriz"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Capital Social</Label>
+              <Input
+                value={String(section.share_capital ?? "")}
+                onChange={(e) => setProp("share_capital", e.target.value)}
+                placeholder="R$ 150.000,00"
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LOCATION / ONDE ESTAMOS ────────────────────────────────────────── */}
+      {section.type === "location" && (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Título da Seção *</Label>
+            <Input
+              value={String(section.title ?? "Onde Estamos")}
+              onChange={(e) => setProp("title", e.target.value)}
+              placeholder="Ex: Onde Estamos"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Subtítulo</Label>
+            <Input
+              value={String(section.subtitle ?? "")}
+              onChange={(e) => setProp("subtitle", e.target.value)}
+              placeholder="Ex: Venha nos visitar ou agende uma reunião."
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2 space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Endereço</Label>
+              <Input
+                value={String(section.address_street ?? "")}
+                onChange={(e) => setProp("address_street", e.target.value)}
+                placeholder="Rua / Avenida"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Número</Label>
+              <Input
+                value={String(section.address_number ?? "")}
+                onChange={(e) => setProp("address_number", e.target.value)}
+                placeholder="1000"
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Complemento</Label>
+              <Input
+                value={String(section.address_complement ?? "")}
+                onChange={(e) => setProp("address_complement", e.target.value)}
+                placeholder="Sala / Andar"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Bairro</Label>
+              <Input
+                value={String(section.address_neighborhood ?? "")}
+                onChange={(e) => setProp("address_neighborhood", e.target.value)}
+                placeholder="Bairro"
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-1 space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">CEP</Label>
+              <Input
+                value={String(section.address_cep ?? "")}
+                onChange={(e) => setProp("address_cep", e.target.value)}
+                placeholder="00000-000"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="col-span-1 space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Cidade</Label>
+              <Input
+                value={String(section.address_city ?? "")}
+                onChange={(e) => setProp("address_city", e.target.value)}
+                placeholder="Cidade"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="col-span-1 space-y-1.5">
+              <Label className="label-mono text-xs text-muted-foreground">Estado (UF)</Label>
+              <Input
+                value={String(section.address_state ?? "")}
+                onChange={(e) => setProp("address_state", e.target.value.toUpperCase())}
+                placeholder="SP"
+                maxLength={2}
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-between border-t border-border">
+            <Label className="label-mono text-xs text-muted-foreground">Exibir Mapa Interativo</Label>
+            <input
+              type="checkbox"
+              checked={section.show_map !== false}
+              onChange={(e) => setProp("show_map", e.target.checked)}
+              className="h-4 w-4 cursor-pointer"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

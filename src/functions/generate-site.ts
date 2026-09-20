@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generatePageSections } from "@/lib/content-generator";
+import { generateInstitutionalSections, INITIAL_COMPANY_DATA } from "@/lib/templates/institutional-template";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { findAvailableSlug } from "@/lib/slug";
 import type { Database } from "@/integrations/supabase/types";
@@ -23,6 +24,8 @@ export const GenerateSiteInput = z
     email: z.string().trim().max(120).optional().nullable(),
     city: z.string().trim().max(80).optional().nullable(),
     state: z.string().trim().max(10).optional().nullable(),
+    template_id: z.string().trim().max(80).optional().nullable(),
+    company_data: z.record(z.any()).optional().nullable(),
   })
   .strict();
 
@@ -193,12 +196,153 @@ export const generateSite = createServerFn({ method: "POST" })
       }
     }
 
-    // ── 2. Call Gemini (or fallback to template) ─────────────────────────────
+    // ── 2. Call Institutional Generator or Gemini (or fallback) ──────────
     const GEMINI_KEY = process.env["GEMINI_API_KEY"];
     let sections: unknown[];
     let seoData: { title: string; description: string } | undefined;
 
-    if (GEMINI_KEY) {
+    const isInstitutional =
+      input.template_id === "empresa-institucional" ||
+      input.category === "Institucional / Serviços / Financeiro" ||
+      input.category === "Empresa Institucional";
+
+    let finalCompanyData: any = null;
+
+    if (isInstitutional) {
+      const rawCompanyData = input.company_data || {};
+      finalCompanyData = {
+        ...INITIAL_COMPANY_DATA,
+        name: input.name,
+        fantasy_name: rawCompanyData.fantasy_name || input.name,
+        legal_name: rawCompanyData.legal_name || input.business_name || input.name,
+        cnpj: input.cnpj || rawCompanyData.cnpj || "",
+        phone: input.phone || rawCompanyData.phone || "",
+        whatsapp: input.whatsapp || rawCompanyData.whatsapp || "",
+        email: input.email || rawCompanyData.email || "",
+        address_city: input.city || rawCompanyData.address_city || "",
+        address_state: input.state || rawCompanyData.address_state || "",
+        activity_area: rawCompanyData.activity_area || input.goal || "Serviços Especializados",
+        ...rawCompanyData,
+      };
+
+      if (GEMINI_KEY) {
+        try {
+          const instPrompt = `Você é um diretor de criação e copywriter corporativo brasileiro sênior.
+Crie o conteúdo institucional (Missão, Quem Somos) e o catálogo de serviços especializados ("Soluções Especializadas") para a seguinte empresa:
+
+DADOS DA EMPRESA:
+- Nome Fantasia / Marca: ${finalCompanyData.name}
+- Razão Social: ${finalCompanyData.legal_name}
+- Ramo de Atuação / Atividade Principal (CNAE): ${finalCompanyData.activity_area}
+${finalCompanyData.address_city ? `- Cidade/UF: ${finalCompanyData.address_city}/${finalCompanyData.address_state}` : ""}
+${input.goal ? `- Objetivo: ${input.goal}` : ""}
+
+REGRAS OBRIGATÓRIAS:
+1. RECONHEÇA O NICHO REAL DA EMPRESA: Analise com máxima atenção o Ramo de Atuação ("${finalCompanyData.activity_area}") e a Razão Social ("${finalCompanyData.legal_name}").
+2. NÃO use termos genéricos de assessoria ou consultoria se a empresa atuar em confecção de roupas, vestuário, comércio, alimentação, construção civil, transporte/logística, saúde, etc.
+3. Descreva a Missão e o Quem Somos com vocabulário técnico e profissional fiel ao que a empresa REALMENTE fabrica, comercializa ou executa.
+4. Em "services" ("Soluções Especializadas"), gere entre 3 e 5 serviços/produtos específicos desse nicho com nomes atrativos, descrições claras e categorias adequadas.
+5. Retorne APENAS um JSON válido, sem markdown.
+
+FORMATO JSON ESPERADO:
+{
+  "hero_badge": "Frase curta de destaque do nicho (ex: Excelência em Confecção e Vestuário)",
+  "hero_subtitle": "Subtítulo claro explicando o que a empresa faz e sua proposta de valor (1-2 frases)",
+  "mission_title": "Nossa Missão",
+  "mission_description": "Texto da missão focado no nicho de atuação e compromisso com o cliente (2-3 frases)",
+  "about_title": "Sobre a ${finalCompanyData.name}",
+  "about_body": "Texto de quem somos destacando especialização, dedicação e qualidade no nicho (3-4 frases)",
+  "about_highlight": "Frase de autoridade no nicho",
+  "services_title": "Nossas Soluções Especializadas",
+  "services_subtitle": "Produtos e serviços planejados para atender às necessidades específicas do seu negócio.",
+  "services": [
+    {
+      "name": "Nome do Serviço/Produto 1 no nicho",
+      "description": "Descrição clara e persuasiva do serviço ou produto",
+      "icon": "Scissors",
+      "category": "Categoria ou badge"
+    }
+  ]
+}`;
+
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: instPrompt }] }],
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 2048,
+                  responseMimeType: "application/json",
+                },
+              }),
+            }
+          );
+
+          if (geminiRes.ok) {
+            const geminiJson = (await geminiRes.json()) as any;
+            const rawText = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+            const cleaned = rawText
+              .replace(/^```json\s*/i, "")
+              .replace(/^```\s*/i, "")
+              .replace(/\s*```$/i, "")
+              .trim();
+            const parsed = JSON.parse(cleaned);
+
+            if (parsed.mission_description) {
+              finalCompanyData.mission_description = parsed.mission_description;
+            }
+            if (parsed.mission_title) {
+              finalCompanyData.mission_title = parsed.mission_title;
+            }
+            if (parsed.about_body) {
+              finalCompanyData.about_description = parsed.about_body;
+            }
+            if (parsed.about_title) {
+              finalCompanyData.about_title = parsed.about_title;
+            }
+            if (parsed.about_highlight) {
+              finalCompanyData.about_highlight = parsed.about_highlight;
+            }
+            if (parsed.hero_badge) {
+              finalCompanyData.hero_badge = parsed.hero_badge;
+            }
+            if (parsed.hero_subtitle) {
+              finalCompanyData.hero_subtitle = parsed.hero_subtitle;
+            }
+            if (parsed.services_title) {
+              finalCompanyData.services_title = parsed.services_title;
+            }
+            if (parsed.services_subtitle) {
+              finalCompanyData.services_subtitle = parsed.services_subtitle;
+            }
+            if (Array.isArray(parsed.services) && parsed.services.length > 0) {
+              finalCompanyData.services = parsed.services.map((s: any, idx: number) => ({
+                id: `srv-${idx + 1}`,
+                name: s.name || s.title || `Serviço ${idx + 1}`,
+                description: s.description || "",
+                icon: s.icon || "Sparkles",
+                category: s.category || s.badge || "Especialidade",
+                link: "#contato",
+                status: "active",
+              }));
+            }
+            console.log(`[Gemini] Specialized institutional copy generated for "${finalCompanyData.name}" (${finalCompanyData.activity_area})`);
+          }
+        } catch (geminiInstErr) {
+          console.warn("[Gemini] Failed to generate institutional copy via AI, using heuristic fallback:", geminiInstErr);
+        }
+      }
+
+      sections = generateInstitutionalSections(finalCompanyData);
+      seoData = {
+        title: `${input.name} | ${finalCompanyData.activity_area || "Soluções Especializadas"}`,
+        description: `Conheça a ${input.name} (${input.business_name}). ${finalCompanyData.about_highlight || "Qualidade e excelência em serviços"}${input.city ? ` em ${input.city}` : ""}.`,
+      };
+      console.log(`[Institutional] Generated ${sections.length} sections for "${input.name}"`);
+    } else if (GEMINI_KEY) {
       try {
         const prompt = buildPrompt(input);
 
@@ -286,6 +430,29 @@ export const generateSite = createServerFn({ method: "POST" })
       input.name || input.business_name
     );
 
+    // Safely resolve template_id as valid UUID or null
+    let dbTemplateId: string | null = null;
+    const templateSlug = input.template_id ?? (isInstitutional ? "empresa-institucional" : null);
+    if (templateSlug) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateSlug);
+      if (isUuid) {
+        dbTemplateId = templateSlug;
+      } else {
+        try {
+          const { data: tpl } = await supabase
+            .from("templates")
+            .select("id")
+            .eq("slug", templateSlug)
+            .maybeSingle();
+          if (tpl?.id) {
+            dbTemplateId = tpl.id;
+          }
+        } catch (err) {
+          console.warn("[generate-site] Template lookup by slug failed, setting template_id to null:", err);
+        }
+      }
+    }
+
     const { data: site, error: siteError } = await supabase
       .from("sites")
       .insert({
@@ -306,11 +473,14 @@ export const generateSite = createServerFn({ method: "POST" })
         status: "published",
         published_at: new Date().toISOString(),
         description: "",
+        template_id: dbTemplateId,
         content: {
           cnpj: input.cnpj ?? null,
+          template_slug: isInstitutional ? "empresa-institucional" : null,
           generated: true,
-          ai: !!GEMINI_KEY,
+          ai: !isInstitutional && !!GEMINI_KEY,
           sections: sections as any,
+          company_data: finalCompanyData || undefined,
         },
       })
       .select("id")

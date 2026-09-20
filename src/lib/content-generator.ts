@@ -22,9 +22,37 @@ export interface Section {
   [key: string]: unknown;
 }
 
+import { generateInstitutionalSections, INITIAL_COMPANY_DATA } from "./templates/institutional-template";
+
 // ─── Per-niche templates ─────────────────────────────────────────────────────
 
 const TEMPLATES: Record<string, (s: SiteInfo) => Section[]> = {
+  "Institucional / Serviços / Financeiro": (s) =>
+    generateInstitutionalSections({
+      name: s.name,
+      fantasy_name: s.name,
+      legal_name: s.business_name || s.name,
+      phone: s.phone || "",
+      whatsapp: s.whatsapp || "",
+      email: s.email || "",
+      address_city: s.city || "",
+      address_state: s.state || "",
+      activity_area: s.goal || "Serviços Institucionais e Corporativos",
+    }) as Section[],
+
+  "Empresa Institucional": (s) =>
+    generateInstitutionalSections({
+      name: s.name,
+      fantasy_name: s.name,
+      legal_name: s.business_name || s.name,
+      phone: s.phone || "",
+      whatsapp: s.whatsapp || "",
+      email: s.email || "",
+      address_city: s.city || "",
+      address_state: s.state || "",
+      activity_area: s.goal || "Serviços Institucionais e Corporativos",
+    }) as Section[],
+
   Restaurante: (s) => [
     {
       type: "hero",

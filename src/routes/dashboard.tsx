@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Plus, Coins, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { Plus, Coins, ChevronDown, ChevronUp, Zap, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +60,7 @@ function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [selectedTemplateForWizard, setSelectedTemplateForWizard] = useState<string | null>(null);
   const [buyTokensOpen, setBuyTokensOpen] = useState(false);
   const [showTxHistory, setShowTxHistory] = useState(false);
 
@@ -408,6 +409,69 @@ function DashboardPage() {
           </div>
         </div>
 
+        {/* Templates em Destaque / Biblioteca de Templates */}
+        <section className="mt-10 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-surface to-background p-6 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-3xl">
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-primary text-primary-foreground font-mono text-[10px] tracking-wider uppercase">
+                  Novo Template
+                </Badge>
+                <span className="text-xs font-mono text-muted-foreground">Institucional / Serviços / Financeiro</span>
+              </div>
+              <h3 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                Empresa Institucional
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Landing page corporativa e financeira de alto padrão. Importação e ficha cadastral completa via CNPJ, missão visual destacada, catálogo de serviços dinâmicos, localização com mapa interativo opcional, botão WhatsApp flutuante e conformidade LGPD.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="inline-flex items-center text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                  ✓ Ficha Cadastral CNPJ
+                </span>
+                <span className="inline-flex items-center text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                  ✓ Serviços Dinâmicos (+ CRUD)
+                </span>
+                <span className="inline-flex items-center text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                  ✓ Mapa Interativo
+                </span>
+                <span className="inline-flex items-center text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                  ✓ WhatsApp Flutuante
+                </span>
+                <span className="inline-flex items-center text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                  ✓ LGPD & DPO
+                </span>
+                <span className="inline-flex items-center text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                  ✓ SEO Automático & Schema.org
+                </span>
+              </div>
+            </div>
+
+            <div className="shrink-0 flex items-center gap-2">
+              <Button
+                variant="hero"
+                size="lg"
+                onClick={() => {
+                  if (!canCreateSite) {
+                    toast.warning("Saldo insuficiente para criar site", {
+                      description: `Você possui ${tokenBalance.toLocaleString("pt-BR")} tokens. É necessário ter pelo menos 2,5 tokens para gerar um site.`,
+                    });
+                    setBuyTokensOpen(true);
+                    return;
+                  }
+                  setSelectedTemplateForWizard("empresa-institucional");
+                  setWizardOpen(true);
+                }}
+                className="w-full md:w-auto font-bold gap-2 shadow-md"
+              >
+                <Building2 className="h-4 w-4" />
+                Usar este Template
+              </Button>
+            </div>
+          </div>
+        </section>
+
         {/* Sites list */}
         <section className="mt-10">
           <div className="flex items-center justify-between">
@@ -510,9 +574,15 @@ function DashboardPage() {
       {/* Dialogs */}
       <CreateSiteWizard
         open={wizardOpen}
-        onOpenChange={setWizardOpen}
+        onOpenChange={(isOpen) => {
+          setWizardOpen(isOpen);
+          if (!isOpen) {
+            setSelectedTemplateForWizard(null);
+          }
+        }}
         userId={user.id}
         onOpenBuyTokens={() => setBuyTokensOpen(true)}
+        initialTemplateId={selectedTemplateForWizard}
       />
       <BuyTokensDialog open={buyTokensOpen} onOpenChange={setBuyTokensOpen} />
     </div>

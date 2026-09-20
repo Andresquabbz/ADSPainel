@@ -17,6 +17,11 @@ import {
   Grid,
   HelpCircle,
   PhoneCall,
+  ShieldCheck,
+  Building2,
+  MapPin,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type { AnySection } from "./AddSectionModal";
 import { AddSectionModal } from "./AddSectionModal";
@@ -33,15 +38,20 @@ interface SectionListProps {
 
 const SECTION_TYPE_LABELS: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   hero: { label: "Hero Principal", icon: Sparkles },
+  mission: { label: "Nossa Missão", icon: ShieldCheck },
+  about: { label: "Sobre Nós / Quem Somos", icon: BookOpen },
+  company_services: { label: "Serviços Dinâmicos", icon: Briefcase },
+  company_info: { label: "Informações Cadastrais", icon: Building2 },
+  location: { label: "Onde Estamos", icon: MapPin },
   features: { label: "Diferenciais", icon: CheckCircle2 },
   services: { label: "Serviços", icon: Briefcase },
   steps: { label: "Como Funciona", icon: ListOrdered },
-  about: { label: "Sobre Nós", icon: BookOpen },
   menu_highlight: { label: "Cardápio / Itens", icon: UtensilsCrossed },
   categories: { label: "Categorias", icon: Grid },
   specialties: { label: "Especialidades", icon: Grid },
   faq: { label: "Perguntas Frequentes", icon: HelpCircle },
   contact: { label: "Contato & WhatsApp", icon: PhoneCall },
+  privacy_policy: { label: "Política de Privacidade (LGPD)", icon: ShieldCheck },
 };
 
 export function SectionList({
@@ -103,6 +113,14 @@ export function SectionList({
     if (selectedSectionIndex === null) return;
     const next = [...sections];
     next[selectedSectionIndex] = updated;
+    onChange(next);
+  }
+
+  function toggleSectionEnabled(index: number) {
+    const next = [...sections];
+    const current = next[index];
+    if (!current) return;
+    next[index] = { ...current, enabled: current.enabled === false ? true : false };
     onChange(next);
   }
 
@@ -202,6 +220,20 @@ export function SectionList({
                   title="Mover para baixo"
                 >
                   <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={`h-7 w-7 p-0 ${
+                    sec.enabled === false
+                      ? "text-muted-foreground/40 hover:text-foreground"
+                      : "text-primary hover:text-primary/80"
+                  }`}
+                  onClick={() => toggleSectionEnabled(idx)}
+                  title={sec.enabled === false ? "Seção desativada (Clique para ativar)" : "Seção visível (Clique para desativar)"}
+                >
+                  {sec.enabled === false ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </Button>
                 <Button
                   type="button"

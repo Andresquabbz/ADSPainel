@@ -25,9 +25,29 @@ export const getPublicSite = createServerFn({ method: "GET" })
         { site_slug: slug }
       );
       if (!rpcError && rpcData?.site) {
+        let finalPages = rpcData.pages || [];
+        const hasAnySection = finalPages.some(
+          (p: any) => Array.isArray(p.sections) && p.sections.length > 0
+        );
+        if (!hasAnySection && rpcData.site) {
+          const backupSections = (rpcData.site.content as Record<string, unknown>)?.["sections"];
+          if (Array.isArray(backupSections) && backupSections.length > 0) {
+            finalPages = [
+              {
+                id: "default-page",
+                title: "Página inicial",
+                path: "/",
+                position: 0,
+                sections: backupSections,
+                seo: (rpcData.site.seo as Record<string, unknown>) || {},
+              },
+            ];
+          }
+        }
+
         return {
           site: rpcData.site,
-          pages: rpcData.pages || [],
+          pages: finalPages,
           isPublished: !!rpcData.isPublished,
         };
       }

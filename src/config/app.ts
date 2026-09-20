@@ -34,6 +34,7 @@ export const RESERVED_SLUGS = [
 ];
 
 export const SITE_CATEGORIES = [
+  "Institucional / Serviços / Financeiro",
   "Restaurante",
   "Loja",
   "Serviços",

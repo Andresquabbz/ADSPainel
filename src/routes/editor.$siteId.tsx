@@ -9,6 +9,8 @@ import { EditorSidebar } from "@/components/editor/EditorSidebar";
 import { LivePreviewCanvas } from "@/components/editor/LivePreviewCanvas";
 import type { AnySection } from "@/components/editor/AddSectionModal";
 import { generatePageSections } from "@/lib/content-generator";
+import type { CompanyData } from "@/lib/templates/institutional-template";
+import { INITIAL_COMPANY_DATA } from "@/lib/templates/institutional-template";
 
 export const Route = createFileRoute("/editor/$siteId")({
   component: EditorPage,
@@ -118,6 +120,9 @@ function EditorPage() {
   // Sections
   const [sections, setSections] = useState<AnySection[]>([]);
 
+  // Company Data for Institutional Template
+  const [companyData, setCompanyData] = useState<CompanyData>(INITIAL_COMPANY_DATA);
+
   // Action status
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -149,7 +154,27 @@ function EditorPage() {
         facebook_domain_verification?: string;
         meta_tag?: string;
         sections?: AnySection[];
+        company_data?: CompanyData;
       } | null;
+
+      // Load or build company data
+      if (siteContent?.company_data) {
+        setCompanyData(siteContent.company_data);
+      } else {
+        setCompanyData({
+          ...INITIAL_COMPANY_DATA,
+          name: site.name || INITIAL_COMPANY_DATA.name,
+          fantasy_name: site.name || INITIAL_COMPANY_DATA.fantasy_name,
+          legal_name: site.business_name || site.name || INITIAL_COMPANY_DATA.legal_name,
+          cnpj: site.content?.cnpj || INITIAL_COMPANY_DATA.cnpj,
+          phone: site.phone || INITIAL_COMPANY_DATA.phone,
+          whatsapp: site.whatsapp || INITIAL_COMPANY_DATA.whatsapp,
+          email: site.email || INITIAL_COMPANY_DATA.email,
+          address_city: site.city || INITIAL_COMPANY_DATA.address_city,
+          address_state: site.state || INITIAL_COMPANY_DATA.address_state,
+          address_street: site.address || INITIAL_COMPANY_DATA.address_street,
+        });
+      }
 
       setMetaVerificationTag(
         siteContent?.facebook_domain_verification ||
@@ -283,6 +308,7 @@ function EditorPage() {
             ...existingContent,
             cnpj: cnpj.trim() || null,
             facebook_domain_verification: metaVerificationTag.trim() || null,
+            company_data: companyData,
             sections: sections as any,
           },
         })
@@ -480,6 +506,8 @@ function EditorPage() {
           siteSlug={site.slug}
           category={site.category || "Geral"}
           isRestricted={isRestricted}
+          companyData={companyData}
+          onChangeCompanyData={setCompanyData}
         />
 
         <LivePreviewCanvas
@@ -499,6 +527,7 @@ function EditorPage() {
           address={address}
           selectedSectionIndex={selectedSectionIndex}
           onSelectSection={setSelectedSectionIndex}
+          companyData={companyData}
         />
       </div>
     </div>

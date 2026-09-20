@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ interface CreateSiteWizardProps {
   onOpenChange: (open: boolean) => void;
   userId: string;
   onOpenBuyTokens?: () => void;
+  initialTemplateId?: string | null;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,15 +57,25 @@ type WizardData = {
 
 interface CnpjResult {
   razao_social: string;
+  capital_social?: string;
+  natureza_juridica?: { descricao: string };
+  porte?: { descricao: string };
+  abertura?: string;
   estabelecimento: {
     nome_fantasia: string | null;
     telefone1: string | null;
     ddd1: string | null;
     email: string | null;
+    logradouro?: string | null;
+    numero?: string | null;
+    bairro?: string | null;
+    cep?: string | null;
+    data_inicio_atividade?: string | null;
     cidade: { nome: string } | null;
     estado: { sigla: string } | null;
     atividade_principal: { descricao: string } | null;
     situacao_cadastral: string;
+    tipo?: string | null;
   };
 }
 
@@ -124,9 +135,14 @@ export function CreateSiteWizard({
   onOpenChange,
   userId,
   onOpenBuyTokens,
+  initialTemplateId,
 }: CreateSiteWizardProps) {
   // step: -1 = CNPJ screen, 0/1/2 = form steps, "generating" = loading
   const [step, setStep] = useState<-1 | 0 | 1 | 2 | "generating">(-1);
+
+  // Template selection
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(initialTemplateId ?? null);
+  const [extraCompanyData, setExtraCompanyData] = useState<Record<string, any>>({});
 
   // CNPJ
   const [cnpj, setCnpj] = useState("");
@@ -140,6 +156,21 @@ export function CreateSiteWizard({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (open && initialTemplateId === "empresa-institucional") {
+      setSelectedTemplateId("empresa-institucional");
+      setData((prev) => ({
+        ...prev,
+        category: "Institucional / Serviços / Financeiro",
+        style: "Corporativo",
+        primary_color: "#1e3a8a",
+        goal: prev.goal || "Apresentar a empresa e captar clientes corporativos",
+      }));
+    } else if (open && !initialTemplateId && !selectedTemplateId) {
+      setSelectedTemplateId(null);
+    }
+  }, [open, initialTemplateId]);
 
   function setField<K extends keyof WizardData>(key: K, value: WizardData[K]) {
     setData((prev) => ({ ...prev, [key]: value }));
@@ -175,23 +206,59 @@ export function CreateSiteWizard({
       const fantasia = json.estabelecimento.nome_fantasia;
       const razao = json.razao_social;
       const tel = formatPhone(json.estabelecimento.ddd1, json.estabelecimento.telefone1);
-      const categoria = guessCategory(json.estabelecimento.atividade_principal?.descricao ?? null);
+      const isInst = selectedTemplateId === "empresa-institucional";
+      const categoria = isInst
+        ? "Institucional / Serviços / Financeiro"
+        : guessCategory(json.estabelecimento.atividade_principal?.descricao ?? null);
 
       const cleanedRazao = cleanBusinessName(razao);
       const suggestedName = fantasia?.trim() ? fantasia.trim() : (cleanedRazao || razao.trim());
 
-      setData({
-        ...INITIAL_DATA,
+      const openingDate = json.estabelecimento?.data_inicio_atividade || json.abertura || "";
+      const companySize = json.porte?.descricao || "";
+      const legalNature = json.natureza_juridica?.descricao || "";
+      const companyType = json.estabelecimento?.tipo || "Matriz";
+      const shareCapital = json.capital_social
+        ? "R$ " + Number(json.capital_social).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+        : "";
+      const street = json.estabelecimento?.logradouro || "";
+      const number = json.estabelecimento?.numero || "";
+      const neighborhood = json.estabelecimento?.bairro || "";
+      const zip = json.estabelecimento?.cep || "";
+
+      setExtraCompanyData({
+        fantasy_name: suggestedName,
+        legal_name: razao,
+        cnpj: formatted,
+        opening_date: openingDate,
+        company_size: companySize,
+        legal_nature: legalNature,
+        company_type: companyType,
+        registration_status: json.estabelecimento.situacao_cadastral || "Ativa",
+        share_capital: shareCapital,
+        address_street: street,
+        address_number: number,
+        address_neighborhood: neighborhood,
+        address_city: json.estabelecimento.cidade?.nome ?? "",
+        address_state: json.estabelecimento.estado?.sigla ?? "",
+        address_zip: zip,
+        activity_area: json.estabelecimento.atividade_principal?.descricao || "",
+      });
+
+      setData((prev) => ({
+        ...prev,
         name: suggestedName,
         business_name: cleanedRazao || razao.trim(),
         category: categoria,
-        goal: "Captar clientes",
+        goal: isInst ? "Apresentar a empresa e captar clientes corporativos" : "Captar clientes",
+        style: isInst ? "Corporativo" : prev.style || "",
+        primary_color: isInst ? "#1e3a8a" : prev.primary_color,
         phone: tel,
         whatsapp: tel,
         email: json.estabelecimento.email?.toLowerCase() ?? "",
         city: json.estabelecimento.cidade?.nome ?? "",
         state: json.estabelecimento.estado?.sigla ?? "",
-      });
+      }));
 
       toast.success("Dados importados com sucesso!");
     } catch (e: unknown) {
@@ -243,6 +310,10 @@ export function CreateSiteWizard({
 
     setStep("generating");
     try {
+      const isInst =
+        selectedTemplateId === "empresa-institucional" ||
+        data.category === "Institucional / Serviços / Financeiro";
+
       const result = await generateSite({
         data: {
           name: data.name.trim(),
@@ -258,6 +329,22 @@ export function CreateSiteWizard({
           email: data.email.trim() || null,
           city: data.city.trim() || null,
           state: data.state.trim() || null,
+          template_id: isInst ? "empresa-institucional" : null,
+          company_data: isInst
+            ? {
+                ...extraCompanyData,
+                name: data.name.trim(),
+                fantasy_name: data.name.trim(),
+                legal_name: data.business_name.trim() || data.name.trim(),
+                cnpj: cnpjFormatted || extraCompanyData.cnpj || "",
+                phone: data.phone.trim() || extraCompanyData.phone || "",
+                whatsapp: data.whatsapp.trim() || extraCompanyData.whatsapp || "",
+                email: data.email.trim() || extraCompanyData.email || "",
+                address_city: data.city.trim() || extraCompanyData.address_city || "",
+                address_state: data.state.trim() || extraCompanyData.address_state || "",
+                activity_area: extraCompanyData.activity_area || (data.category !== "Institucional / Serviços / Financeiro" ? data.category : "") || data.goal || "Serviços Especializados",
+              }
+            : undefined,
         },
       });
 
@@ -318,6 +405,8 @@ export function CreateSiteWizard({
       setCnpj("");
       setCnpjFormatted("");
       setCnpjResult(null);
+      setExtraCompanyData({});
+      setSelectedTemplateId(initialTemplateId ?? null);
       setData(INITIAL_DATA);
     }, 300);
   }
@@ -343,6 +432,48 @@ export function CreateSiteWizard({
                 : "Preencha as informações para configurar seu site."}
           </DialogDescription>
         </DialogHeader>
+
+        {/* ── Template selection info banner ────────────────────── */}
+        {step !== "generating" && (
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-2.5 text-xs">
+            <div className="flex items-center gap-2">
+              <Building2 className={`h-4 w-4 shrink-0 ${selectedTemplateId === "empresa-institucional" ? "text-primary" : "text-muted-foreground"}`} />
+              <div>
+                <span className="font-mono text-muted-foreground text-[11px]">Template: </span>
+                <span className="font-semibold text-foreground">
+                  {selectedTemplateId === "empresa-institucional" || data.category === "Institucional / Serviços / Financeiro"
+                    ? "Empresa Institucional"
+                    : "Padrão (Multi-nicho)"}
+                </span>
+                {(selectedTemplateId === "empresa-institucional" || data.category === "Institucional / Serviços / Financeiro") && (
+                  <span className="ml-1.5 text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                    Institucional / Serviços / Financeiro
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedTemplateId === "empresa-institucional") {
+                  setSelectedTemplateId(null);
+                  if (data.category === "Institucional / Serviços / Financeiro") {
+                    setField("category", "");
+                  }
+                } else {
+                  setSelectedTemplateId("empresa-institucional");
+                  setField("category", "Institucional / Serviços / Financeiro");
+                  setField("style", "Corporativo");
+                  setField("primary_color", "#1e3a8a");
+                  setField("goal", data.goal || "Apresentar a empresa e captar clientes corporativos");
+                }
+              }}
+              className="label-mono text-[11px] text-primary hover:underline font-medium"
+            >
+              {selectedTemplateId === "empresa-institucional" ? "Mudar template" : "Usar Institucional"}
+            </button>
+          </div>
+        )}
 
         {/* ── Generating screen ──────────────────────────────────── */}
         {step === "generating" && (

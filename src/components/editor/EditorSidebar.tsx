@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Layout, Palette, PhoneCall, Search, Lock } from "lucide-react";
+import { Layout, Palette, PhoneCall, Search, Building2, ShieldCheck } from "lucide-react";
 import type { AnySection } from "./AddSectionModal";
 import { SectionList } from "./SectionList";
 import { ThemeTab } from "./ThemeTab";
 import { ContactTab } from "./ContactTab";
 import { SeoTab } from "./SeoTab";
+import { InstitutionalEditorTabs } from "./InstitutionalEditorTabs";
+import type { CompanyData } from "@/lib/templates/institutional-template";
 
 interface EditorSidebarProps {
   sections: AnySection[];
@@ -48,6 +50,9 @@ interface EditorSidebarProps {
   siteSlug: string;
   category: string;
   isRestricted?: boolean;
+  // Institutional template data
+  companyData?: CompanyData;
+  onChangeCompanyData?: (updater: (prev: CompanyData) => CompanyData) => void;
 }
 
 export function EditorSidebar({
@@ -88,28 +93,41 @@ export function EditorSidebar({
   siteSlug,
   category,
   isRestricted = true,
+  companyData,
+  onChangeCompanyData,
 }: EditorSidebarProps) {
-  const [tab, setTab] = useState("sections");
+  const isInstitutional =
+    category === "Institucional / Serviços / Financeiro" ||
+    category === "Empresa Institucional" ||
+    !!companyData;
+
+  const [tab, setTab] = useState(isInstitutional ? "empresa" : "sections");
 
   return (
     <div className="w-96 flex flex-col border-r border-border bg-card h-full shrink-0 overflow-hidden">
       <Tabs value={tab} onValueChange={setTab} className="flex flex-col h-full">
         {/* Tab Headers */}
         <div className="p-3 border-b border-border bg-muted/30">
-          <TabsList className="grid grid-cols-4 w-full h-9">
-            <TabsTrigger value="sections" className="text-xs px-2 gap-1.5" title="Seções">
+          <TabsList className={`grid ${isInstitutional ? "grid-cols-5" : "grid-cols-4"} w-full h-9`}>
+            {isInstitutional && (
+              <TabsTrigger value="empresa" className="text-xs px-1 gap-1" title="Empresa">
+                <Building2 className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline font-bold">Empresa</span>
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="sections" className="text-xs px-1 gap-1" title="Seções">
               <Layout className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Seções</span>
             </TabsTrigger>
-            <TabsTrigger value="theme" className="text-xs px-2 gap-1.5" title="Estilo">
+            <TabsTrigger value="theme" className="text-xs px-1 gap-1" title="Estilo">
               <Palette className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Estilo</span>
             </TabsTrigger>
-            <TabsTrigger value="contact" className="text-xs px-2 gap-1.5" title="Contato">
+            <TabsTrigger value="contact" className="text-xs px-1 gap-1" title="Contato">
               <PhoneCall className="h-3.5 w-3.5 text-primary" />
-              <span className="hidden sm:inline font-bold">Contato</span>
+              <span className="hidden sm:inline">Contato</span>
             </TabsTrigger>
-            <TabsTrigger value="seo" className="text-xs px-2 gap-1.5" title="SEO">
+            <TabsTrigger value="seo" className="text-xs px-1 gap-1" title="SEO">
               <Search className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">SEO</span>
             </TabsTrigger>
@@ -118,6 +136,21 @@ export function EditorSidebar({
 
         {/* Tab Content Panels (Scrollable) */}
         <div className="flex-1 overflow-y-auto p-4">
+          {isInstitutional && companyData && onChangeCompanyData && (
+            <TabsContent value="empresa" className="mt-0">
+              <InstitutionalEditorTabs
+                companyData={companyData}
+                onChangeCompanyData={onChangeCompanyData}
+                primaryColor={primaryColor}
+                onChangePrimaryColor={onChangePrimaryColor}
+                fontFamily={fontFamily}
+                onChangeFontFamily={onChangeFontFamily}
+                style={style}
+                onChangeStyle={onChangeStyle}
+              />
+            </TabsContent>
+          )}
+
           <TabsContent value="sections" className="mt-0">
             <SectionList
               sections={sections}

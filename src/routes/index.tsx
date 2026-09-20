@@ -32,7 +32,7 @@ const getHostHeader = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const { getRequest } = await import("@tanstack/react-start/server");
     const req = getRequest();
-    return req?.headers?.get("host") || "";
+    return req?.headers?.get("x-forwarded-host") || req?.headers?.get("host") || "";
   } catch {
     return "";
   }
