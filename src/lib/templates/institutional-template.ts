@@ -278,6 +278,72 @@ export function getNicheDefaults(activityArea: string = "", companyName: string 
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
+  // Climatização, Refrigeração, Ar Condicionado, Ventilação Mecânica, Aquecimento Central (HVAC-R)
+  if (
+    norm.includes("refrigerac") ||
+    norm.includes("ar condicionado") ||
+    norm.includes("climatizac") ||
+    norm.includes("ventilac") ||
+    norm.includes("exaust") ||
+    norm.includes("calefac") ||
+    norm.includes("aquecimento central") ||
+    norm.includes("hvac") ||
+    norm.includes("dutos") ||
+    norm.includes("camara fria") ||
+    norm.includes("camaras frias") ||
+    norm.includes("chiller")
+  ) {
+    return {
+      hero_badge: "Climatização, Refrigeração & Ventilação Mecânica",
+      hero_subtitle: `Projetos de alta performance, instalação e manutenção de sistemas centrais de ar condicionado, refrigeração comercial/industrial e ventilação mecânica controlada.`,
+      mission_title: "Nossa Missão",
+      mission_description: `Garantir conforto térmico, eficiência energética e máxima qualidade do ar em edifícios residenciais, comerciais e industriais, por meio de soluções completas em refrigeração, climatização e ventilação mecânica com rigor técnico e conformidade com as normas vigentes (PMOC).`,
+      about_title: `Sobre a ${companyName || "Nossa Empresa de Climatização"}`,
+      about_description: `Com sólida experiência no setor de engenharia térmica e climatização, a ${companyName || "nossa empresa"} é especialista na instalação, alteração e manutenção de sistemas centrais de ar condicionado, refrigeração e ventilação mecânica controlada. Trabalhamos em total conformidade com as normas da ABNT e ANVISA, garantindo alto rendimento térmico, redução de consumo elétrico e ambientes saudáveis.`,
+      about_highlight: "Qualidade do ar garantida, engenharia térmica de alta performance e conformidade com normas técnicas e PMOC.",
+      services_title: "Soluções em Climatização, Refrigeração e Ventilação",
+      services_subtitle: "Instalação, montagem de dutos e manutenção preventiva para todos os tipos de construções.",
+      services: [
+        {
+          id: "srv-1",
+          name: "Sistemas Centrais de Ar Condicionado e Climatização",
+          description: "Projeto, montagem e instalação de sistemas VRF, Multi Split, Chillers e redes de dutos de distribuição com cálculo de carga térmica para residências e comércios.",
+          icon: "ShieldCheck",
+          category: "Climatização",
+          link: "#contato",
+          status: "active" as const,
+        },
+        {
+          id: "srv-2",
+          name: "Sistemas de Refrigeração Central Comercial e Industrial",
+          description: "Montagem, alteração e reparo em centrais de refrigeração, câmaras frigoríficas e sistemas de resfriamento com controle digital de temperatura.",
+          icon: "Sparkles",
+          category: "Refrigeração",
+          link: "#contato",
+          status: "active" as const,
+        },
+        {
+          id: "srv-3",
+          name: "Ventilação Mecânica Controlada e Exaustão",
+          description: "Instalação de exaustores industriais, sistemas de renovação de ar, filtragem e pressurização para cozinhas, subsolos e edifícios.",
+          icon: "CheckCircle2",
+          category: "Ventilação",
+          link: "#contato",
+          status: "active" as const,
+        },
+        {
+          id: "srv-4",
+          name: "Manutenção Preventiva, Corretiva e Plano PMOC",
+          description: "Higienização técnica de serpentinas e dutos, recarga de fluído refrigerante, laudos técnicos e gestão do plano PMOC exigido por lei.",
+          icon: "Award",
+          category: "Manutenção & PMOC",
+          link: "#contato",
+          status: "active" as const,
+        },
+      ],
+    };
+  }
+
   // Confecção, Roupas, Moda, Têxtil, Vestuário
   if (
     norm.includes("confeccao") ||
@@ -641,12 +707,13 @@ export function getNicheDefaults(activityArea: string = "", companyName: string 
 
   // Pet Shop, Clínica Veterinária, Banho e Tosa, Animais
   if (
-    norm.includes("pet") ||
+    /\bpet\b|\bpets\b|petshop|pet shop/.test(norm) ||
     norm.includes("veterin") ||
-    norm.includes("tosa") ||
     norm.includes("banho e tosa") ||
-    norm.includes("animal") ||
-    norm.includes("racao") ||
+    /\btosa\b/.test(norm) ||
+    norm.includes("animais") ||
+    /\banimal\b/.test(norm) ||
+    /\bracao animal\b|\bracoes\b/.test(norm) ||
     norm.includes("canil") ||
     norm.includes("adestram")
   ) {
@@ -1259,27 +1326,59 @@ export function getNicheDefaults(activityArea: string = "", companyName: string 
 export function generateInstitutionalSections(data: Partial<CompanyData>): TemplateSection[] {
   const niche = getNicheDefaults(data.activity_area || "", data.name || data.legal_name || "");
 
+  const customMissionDesc =
+    data.mission_description && data.mission_description !== INITIAL_COMPANY_DATA.mission_description
+      ? data.mission_description
+      : niche?.mission_description || INITIAL_COMPANY_DATA.mission_description;
+
+  const customAboutDesc =
+    data.about_description && data.about_description !== INITIAL_COMPANY_DATA.about_description
+      ? data.about_description
+      : niche?.about_description || INITIAL_COMPANY_DATA.about_description;
+
+  const customAboutTitle =
+    data.about_title && data.about_title !== INITIAL_COMPANY_DATA.about_title
+      ? data.about_title
+      : niche?.about_title || INITIAL_COMPANY_DATA.about_title;
+
+  const customMissionTitle =
+    data.mission_title && data.mission_title !== INITIAL_COMPANY_DATA.mission_title
+      ? data.mission_title
+      : niche?.mission_title || INITIAL_COMPANY_DATA.mission_title;
+
+  const customAboutHighlight =
+    data.about_highlight || niche?.about_highlight || INITIAL_COMPANY_DATA.about_highlight;
+
+  const customHeroBadge =
+    data.hero_badge || niche?.hero_badge || INITIAL_COMPANY_DATA.hero_badge;
+
+  const customHeroSubtitle =
+    data.hero_subtitle || niche?.hero_subtitle || INITIAL_COMPANY_DATA.hero_subtitle;
+
+  const customServicesTitle =
+    data.services_title || niche?.services_title || INITIAL_COMPANY_DATA.services_title;
+
+  const customServicesSubtitle =
+    data.services_subtitle || niche?.services_subtitle || INITIAL_COMPANY_DATA.services_subtitle;
+
+  const customServices =
+    data.services && data.services.length > 0 && data.services !== INITIAL_COMPANY_DATA.services
+      ? data.services
+      : niche?.services || INITIAL_COMPANY_DATA.services;
+
   const merged: CompanyData = {
     ...INITIAL_COMPANY_DATA,
-    ...(niche
-      ? {
-          mission_title: niche.mission_title,
-          mission_description: niche.mission_description,
-          about_title: niche.about_title,
-          about_description: niche.about_description,
-          about_highlight: niche.about_highlight,
-          hero_badge: niche.hero_badge,
-          hero_subtitle: niche.hero_subtitle,
-          services_title: niche.services_title,
-          services_subtitle: niche.services_subtitle,
-          services: niche.services,
-        }
-      : {}),
     ...data,
-    services:
-      data.services && data.services.length > 0 && data.services !== INITIAL_COMPANY_DATA.services
-        ? data.services
-        : niche?.services || data.services || INITIAL_COMPANY_DATA.services,
+    mission_title: customMissionTitle,
+    mission_description: customMissionDesc,
+    about_title: customAboutTitle,
+    about_description: customAboutDesc,
+    about_highlight: customAboutHighlight,
+    hero_badge: customHeroBadge,
+    hero_subtitle: customHeroSubtitle,
+    services_title: customServicesTitle,
+    services_subtitle: customServicesSubtitle,
+    services: customServices,
     floating_whatsapp: {
       ...INITIAL_COMPANY_DATA.floating_whatsapp,
       ...(data.floating_whatsapp || {}),
@@ -1290,6 +1389,20 @@ export function generateInstitutionalSections(data: Partial<CompanyData>): Templ
       ...(data.privacy || {}),
     },
   };
+
+  // Keep data synced with merged so caller receives the tailored niche values
+  if (data) {
+    data.mission_title = merged.mission_title;
+    data.mission_description = merged.mission_description;
+    data.about_title = merged.about_title;
+    data.about_description = merged.about_description;
+    data.about_highlight = merged.about_highlight;
+    data.hero_badge = merged.hero_badge;
+    data.hero_subtitle = merged.hero_subtitle;
+    data.services_title = merged.services_title;
+    data.services_subtitle = merged.services_subtitle;
+    data.services = merged.services;
+  }
 
   return [
     // 1. Hero

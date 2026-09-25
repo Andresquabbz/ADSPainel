@@ -204,7 +204,22 @@ export const generateSite = createServerFn({ method: "POST" })
     }
 
     // ── 2. Call Institutional Generator or Gemini (or fallback) ──────────
-    const GEMINI_KEY = process.env["GEMINI_API_KEY"];
+    let GEMINI_KEY = process.env["GEMINI_API_KEY"] || (process.env as any)["VITE_GEMINI_API_KEY"];
+    if (!GEMINI_KEY) {
+      try {
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+        const envPath = path.resolve(process.cwd(), ".env");
+        if (fs.existsSync(envPath)) {
+          const content = fs.readFileSync(envPath, "utf-8");
+          const match = content.match(/GEMINI_API_KEY=([^\r\n]+)/);
+          if (match) {
+            GEMINI_KEY = match[1].replace(/['"]/g, "").trim();
+            process.env["GEMINI_API_KEY"] = GEMINI_KEY;
+          }
+        }
+      } catch {}
+    }
     let sections: unknown[];
     let seoData: { title: string; description: string } | undefined;
 
