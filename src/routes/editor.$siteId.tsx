@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -122,6 +122,113 @@ function EditorPage() {
 
   // Company Data for Institutional Template
   const [companyData, setCompanyData] = useState<CompanyData>(INITIAL_COMPANY_DATA);
+
+  /**
+   * Bidirectional sync: updates companyData AND patches the corresponding
+   * section objects in real-time so LivePreviewCanvas reflects edits instantly.
+   */
+  const handleUpdateCompanyData = useCallback(
+    (updater: (prev: CompanyData) => CompanyData) => {
+      setCompanyData((prev) => {
+        const next = updater(prev);
+
+        // Patch sections that mirror companyData fields
+        setSections((prevSections) =>
+          prevSections.map((s) => {
+            switch (s.type) {
+              case "hero":
+                return {
+                  ...s,
+                  badge: next.hero_badge ?? s.badge,
+                  title: next.name || s.title,
+                  subtitle: next.hero_subtitle ?? s.subtitle,
+                };
+              case "mission":
+                return {
+                  ...s,
+                  title: next.mission_title || s.title,
+                  description: next.mission_description || s.description,
+                  // pillars only when they come from AI (array)
+                  ...((next as any).pillars ? { pillars: (next as any).pillars } : {}),
+                };
+              case "about":
+                return {
+                  ...s,
+                  title: next.about_title || s.title,
+                  highlight: next.about_highlight || s.highlight,
+                  body: next.about_description || s.body,
+                  foundation_year: next.foundation_year || s.foundation_year,
+                  activity_area: next.activity_area || s.activity_area,
+                };
+              case "company_services":
+                return {
+                  ...s,
+                  title: next.services_title || s.title,
+                  subtitle: next.services_subtitle || s.subtitle,
+                  items:
+                    next.services && next.services.length > 0
+                      ? next.services
+                      : s.items,
+                };
+              case "company_info":
+                return {
+                  ...s,
+                  legal_name: next.legal_name || s.legal_name,
+                  fantasy_name: next.fantasy_name || s.fantasy_name,
+                  cnpj: next.cnpj || s.cnpj,
+                  opening_date: next.opening_date || s.opening_date,
+                  company_size: next.company_size || s.company_size,
+                  legal_nature: next.legal_nature || s.legal_nature,
+                  registration_status:
+                    next.registration_status || s.registration_status,
+                  company_type: next.company_type || s.company_type,
+                  share_capital: next.share_capital || s.share_capital,
+                };
+              case "location":
+                return {
+                  ...s,
+                  address_street: next.address_street || s.address_street,
+                  address_number: next.address_number || s.address_number,
+                  address_complement:
+                    next.address_complement || s.address_complement,
+                  address_neighborhood:
+                    next.address_neighborhood || s.address_neighborhood,
+                  address_city: next.address_city || s.address_city,
+                  address_state: next.address_state || s.address_state,
+                  address_cep: next.address_cep || s.address_cep,
+                };
+              case "contact":
+                return {
+                  ...s,
+                  phone: next.phone || s.phone,
+                  whatsapp: next.whatsapp || s.whatsapp,
+                  email: next.email || s.email,
+                  website: next.website || s.website,
+                  instagram: next.instagram || s.instagram,
+                  facebook: next.facebook || s.facebook,
+                  linkedin: next.linkedin || s.linkedin,
+                  youtube: next.youtube || s.youtube,
+                  tiktok: next.tiktok || s.tiktok,
+                };
+              case "privacy_policy":
+                return {
+                  ...s,
+                  body: next.privacy?.policy_text || s.body,
+                  terms_text: next.privacy?.terms_text || s.terms_text,
+                  dpo_contact:
+                    next.privacy?.dpo_contact || next.email || s.dpo_contact,
+                };
+              default:
+                return s;
+            }
+          })
+        );
+
+        return next;
+      });
+    },
+    []
+  );
 
   // Action status
   const [isSaving, setIsSaving] = useState(false);
@@ -507,7 +614,7 @@ function EditorPage() {
           category={site.category || "Geral"}
           isRestricted={isRestricted}
           companyData={companyData}
-          onChangeCompanyData={setCompanyData}
+          onChangeCompanyData={handleUpdateCompanyData}
         />
 
         <LivePreviewCanvas

@@ -231,6 +231,32 @@ export function CreateSiteWizard({
       const neighborhood = json.estabelecimento?.bairro || "";
       const zip = json.estabelecimento?.cep || "";
 
+      // Enrich with IBGE CNAE descriptors & scope of activities
+      const cnaeId = json.estabelecimento.atividade_principal?.id;
+      let cnaeDetails: any = null;
+      if (cnaeId) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          const ibgeRes = await fetch(`https://servicodados.ibge.gov.br/api/v2/cnae/subclasses/${cnaeId}`, {
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (ibgeRes.ok) {
+            const ibgeJson = await ibgeRes.json();
+            cnaeDetails = {
+              cnae_code: json.estabelecimento.atividade_principal?.subclasse || cnaeId,
+              cnae_descricao: ibgeJson.descricao || cnaeDesc,
+              compreende: Array.isArray(ibgeJson.observacoes) ? ibgeJson.observacoes : [],
+              descritores: Array.isArray(ibgeJson.atividades) ? ibgeJson.atividades : [],
+              secundarias: (json.estabelecimento.atividades_secundarias || []).map((a: any) => a.descricao).filter(Boolean),
+            };
+          }
+        } catch (ibgeErr) {
+          console.warn("[CNPJ] IBGE CNAE enrichment skipped:", ibgeErr);
+        }
+      }
+
       setExtraCompanyData({
         fantasy_name: suggestedName,
         legal_name: razao,
@@ -248,6 +274,7 @@ export function CreateSiteWizard({
         address_state: json.estabelecimento.estado?.sigla ?? "",
         address_zip: zip,
         activity_area: cnaeDesc,
+        cnae_details: cnaeDetails,
       });
 
       setData((prev) => ({
@@ -335,6 +362,7 @@ export function CreateSiteWizard({
           cnpj: cnpjFormatted || null,
           category: data.category || null,
           activity_area: effectiveActivityArea,
+          cnae_details: extraCompanyData.cnae_details || null,
           goal: data.goal || null,
           style: data.style || null,
           primary_color: data.primary_color,

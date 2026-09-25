@@ -363,22 +363,22 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
           style={{ backgroundColor: theme.isDark ? undefined : primary + "12" }}
         >
           <div className="max-w-3xl mx-auto space-y-4">
-            {s.badge && (
+            {(company?.hero_badge || s.badge) && (
               <span
                 className={`inline-block px-3.5 py-1 text-xs font-mono font-bold uppercase tracking-wider text-white ${theme.badgeRadius}`}
                 style={{ backgroundColor: primary }}
               >
-                {t(s.badge)}
+                {t(company?.hero_badge || s.badge)}
               </span>
             )}
             <h1
               className={`text-4xl sm:text-5xl ${theme.headingClass} leading-tight font-extrabold`}
               style={{ color: primary }}
             >
-              {t(s.title || ctx.name)}
+              {t(company?.fantasy_name || company?.name || s.title || ctx.name)}
             </h1>
             <p className={`text-base sm:text-lg ${theme.subheadingClass} max-w-xl mx-auto leading-relaxed`}>
-              {t(s.subtitle || "Soluções corporativas completas com alta qualidade e excelência.")}
+              {t(company?.hero_subtitle || s.subtitle || "Soluções corporativas completas com alta qualidade e excelência.")}
             </p>
             <div className="pt-4 flex flex-wrap justify-center gap-3">
               {s.cta_label && (
@@ -418,7 +418,7 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
 
     // ── 2. MISSION / NOSSA MISSÃO ───────────────────────────────────────────
     case "mission": {
-      const pillars = (s.pillars as { title: string; description: string }[]) || [];
+      const pillars = (company?.pillars && Array.isArray(company.pillars) && company.pillars.length > 0 ? company.pillars : (s.pillars as { title: string; description: string }[])) || [];
       return (
         <section id="missao" className={`py-16 px-6 ${theme.accentSectionBgClass}`}>
           <div className="max-w-4xl mx-auto space-y-8 text-center">
@@ -430,10 +430,10 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
                 Propósito Institucional
               </p>
               <h2 className={`text-2xl sm:text-3xl mt-2 font-extrabold ${theme.headingClass}`} style={{ color: primary }}>
-                {t(s.title || "Nossa Missão")}
+                {t(company?.mission_title || s.title || "Nossa Missão")}
               </h2>
               <p className={`mt-4 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto ${theme.isDark ? "text-gray-300" : "text-gray-700"}`}>
-                {t(s.description || "Compromisso permanente com a ética, conformidade e geração de valor.")}
+                {t(company?.mission_description || s.description || "Compromisso permanente com a ética, conformidade e geração de valor.")}
               </p>
             </div>
 
@@ -461,22 +461,22 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
               Institucional
             </p>
             <h2 className={`text-2xl sm:text-3xl font-extrabold ${theme.headingClass}`} style={{ color: primary }}>
-              {t(s.title || "Quem Somos")}
+              {t(company?.about_title || s.title || "Quem Somos")}
             </h2>
-            {(s.foundation_year || s.activity_area) && (
+            {(company?.foundation_year || s.foundation_year || company?.activity_area || s.activity_area) && (
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium" style={{ borderColor: primary + "40", color: primary }}>
-                {s.foundation_year && <span>Fundada em {String(s.foundation_year)}</span>}
-                {s.foundation_year && s.activity_area && <span>•</span>}
-                {s.activity_area && <span>{String(s.activity_area)}</span>}
+                {(company?.foundation_year || s.foundation_year) && <span>Fundada em {String(company?.foundation_year || s.foundation_year)}</span>}
+                {(company?.foundation_year || s.foundation_year) && (company?.activity_area || s.activity_area) && <span>•</span>}
+                {(company?.activity_area || s.activity_area) && <span>{String(company?.activity_area || s.activity_area)}</span>}
               </div>
             )}
-            {s.highlight && (
+            {(company?.about_highlight || s.highlight) && (
               <p className="font-semibold text-base" style={{ color: primary }}>
-                {t(s.highlight)}
+                {t(company?.about_highlight || s.highlight)}
               </p>
             )}
             <p className={`text-sm leading-relaxed max-w-2xl mx-auto ${theme.isDark ? "text-gray-300" : "text-gray-600"}`}>
-              {t(s.body || "História e trajetória corporativa.")}
+              {t(company?.about_description || s.body || "História e trajetória corporativa.")}
             </p>
           </div>
         </section>
@@ -484,7 +484,7 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
 
     // ── 4. COMPANY SERVICES / SERVIÇOS DINÂMICOS ────────────────────────────
     case "company_services": {
-      const items = (s.items as any[]) || [];
+      const items = (Array.isArray(company?.services) && company.services.length > 0 ? company.services : (s.items as any[])) || [];
       const activeServices = items.filter((item) => item.status !== "inactive");
       return (
         <section id="servicos" className="py-16 px-6 max-w-5xl mx-auto">
@@ -493,10 +493,10 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
               Soluções Especializadas
             </p>
             <h2 className={`text-2xl sm:text-3xl font-extrabold ${theme.headingClass}`} style={{ color: primary }}>
-              {t(s.title || "Nossos Serviços")}
+              {t(company?.services_title || s.title || "Nossos Serviços")}
             </h2>
-            {s.subtitle && (
-              <p className={`text-xs max-w-md mx-auto ${theme.subheadingClass}`}>{t(s.subtitle)}</p>
+            {(company?.services_subtitle || s.subtitle) && (
+              <p className={`text-xs max-w-md mx-auto ${theme.subheadingClass}`}>{t(company?.services_subtitle || s.subtitle)}</p>
             )}
           </div>
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -561,41 +561,41 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
               <div className="flex items-center gap-3 pb-4 border-b border-border">
                 <Building2 className="h-6 w-6" style={{ color: primary }} />
                 <div>
-                  <h3 className="font-bold text-sm">{s.fantasy_name || ctx.name}</h3>
-                  <p className="text-xs text-muted-foreground">{s.legal_name || ctx.businessName}</p>
+                  <h3 className="font-bold text-sm">{company?.fantasy_name || s.fantasy_name || ctx.name}</h3>
+                  <p className="text-xs text-muted-foreground">{company?.legal_name || s.legal_name || ctx.businessName}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-6 text-xs">
                 <div>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">CNPJ</p>
-                  <p className="font-mono font-bold mt-1 text-sm">{s.cnpj || "00.000.000/0001-00"}</p>
+                  <p className="font-mono font-bold mt-1 text-sm">{company?.cnpj || s.cnpj || "00.000.000/0001-00"}</p>
                 </div>
                 <div>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Data de Abertura</p>
-                  <p className="font-semibold mt-1">{s.opening_date || "—"}</p>
+                  <p className="font-semibold mt-1">{company?.opening_date || s.opening_date || "—"}</p>
                 </div>
                 <div>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Situação Cadastral</p>
                   <span className="inline-block mt-1 font-semibold px-2 py-0.5 rounded text-[11px] bg-emerald-500/10 text-emerald-600 font-mono">
-                    {s.registration_status || "Ativa"}
+                    {company?.registration_status || s.registration_status || "Ativa"}
                   </span>
                 </div>
                 <div>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Porte</p>
-                  <p className="font-semibold mt-1">{s.company_size || "Demais"}</p>
+                  <p className="font-semibold mt-1">{company?.company_size || s.company_size || "Demais"}</p>
                 </div>
                 <div>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Tipo</p>
-                  <p className="font-semibold mt-1">{s.company_type || "Matriz"}</p>
+                  <p className="font-semibold mt-1">{company?.company_type || s.company_type || "Matriz"}</p>
                 </div>
                 <div>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Capital Social</p>
-                  <p className="font-semibold mt-1">{s.share_capital || "—"}</p>
+                  <p className="font-semibold mt-1">{company?.share_capital || s.share_capital || "—"}</p>
                 </div>
                 <div className="sm:col-span-2 lg:col-span-3 pt-2 border-t border-border">
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">Natureza Jurídica</p>
-                  <p className="font-semibold mt-1">{s.legal_nature || "206-2 - Sociedade Empresária Limitada"}</p>
+                  <p className="font-semibold mt-1">{company?.legal_nature || s.legal_nature || "206-2 - Sociedade Empresária Limitada"}</p>
                 </div>
               </div>
             </div>

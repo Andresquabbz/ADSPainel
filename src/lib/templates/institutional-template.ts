@@ -1433,11 +1433,14 @@ export function generateInstitutionalSections(data: Partial<CompanyData>): Templ
       description:
         merged.mission_description ||
         "Prestar serviços com ética, integridade e excelência, proporcionando segurança e valor real para clientes e parceiros.",
-      pillars: [
-        { title: "Segurança e Qualidade", description: "Rigor técnico e conformidade em todos os produtos e serviços." },
-        { title: "Transparência Total", description: "Comunicação clara e relacionamento de mútua confiança." },
-        { title: "Excelência Operacional", description: "Agilidade, pontualidade e precisão do início à entrega." },
-      ],
+      pillars:
+        Array.isArray((data as any)?.pillars) && (data as any).pillars.length > 0
+          ? (data as any).pillars
+          : [
+              { title: "Segurança e Qualidade", description: "Rigor técnico e conformidade em todos os produtos e serviços." },
+              { title: "Transparência Total", description: "Comunicação clara e relacionamento de mútua confiança." },
+              { title: "Excelência Operacional", description: "Agilidade, pontualidade e precisão do início à entrega." },
+            ],
     },
 
     // 3. Quem Somos

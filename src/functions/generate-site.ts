@@ -26,6 +26,16 @@ export const GenerateSiteInput = z
     state: z.string().trim().max(10).optional().nullable(),
     template_id: z.string().trim().max(80).optional().nullable(),
     activity_area: z.string().trim().max(250).optional().nullable(),
+    cnae_details: z
+      .object({
+        cnae_code: z.string().optional().nullable(),
+        cnae_descricao: z.string().optional().nullable(),
+        compreende: z.array(z.string()).optional().nullable(),
+        descritores: z.array(z.string()).optional().nullable(),
+        secundarias: z.array(z.string()).optional().nullable(),
+      })
+      .optional()
+      .nullable(),
     company_data: z.record(z.any()).optional().nullable(),
   })
   .strict();
@@ -60,13 +70,24 @@ function buildPrompt(input: GenerateSiteInputType): string {
   const cleanActivity = rawActivity.replace(/^(\d{2}\.\d{2}-\d-\d{2}\s*-\s*)/, "").trim();
   const effectiveNiche = cleanActivity || input.category || "negócio e comércio";
 
+  const cnaeDetails = input.cnae_details || (input.company_data as any)?.cnae_details;
+  const descritoresText = Array.isArray(cnaeDetails?.descritores) && cnaeDetails.descritores.length > 0
+    ? `\n- Atividades detalhadas e descritores do CNPJ (IBGE): ${cnaeDetails.descritores.slice(0, 10).join("; ")}`
+    : "";
+  const compreendeText = Array.isArray(cnaeDetails?.compreende) && cnaeDetails.compreende.length > 0
+    ? `\n- Escopo de atuação desta atividade: ${cnaeDetails.compreende.slice(0, 3).join(" ")}`
+    : "";
+  const secundariasText = Array.isArray(cnaeDetails?.secundarias) && cnaeDetails.secundarias.length > 0
+    ? `\n- Atividades secundárias: ${cnaeDetails.secundarias.slice(0, 5).join("; ")}`
+    : "";
+
   return `Você é um copywriter especialista em criação de sites para o mercado brasileiro.
 Gere conteúdo completo, atraente e 100% PERSONALIZADO para um negócio de ${effectiveNiche} com estilo ${styleDesc}.
 
 DADOS DO NEGÓCIO:
 - Nome Fantasia / Marca: ${input.name}
 - Razão Social: ${input.business_name}
-- Ramo de Atuação / Nicho Real: ${effectiveNiche}
+- Ramo de Atuação / Nicho Real: ${effectiveNiche}${descritoresText}${compreendeText}${secundariasText}
 ${input.cnpj ? `- CNPJ: ${input.cnpj}` : ""}
 ${input.category ? `- Segmento Geral: ${input.category}` : ""}
 ${input.goal ? `- Objetivo principal: ${input.goal}` : ""}
@@ -255,39 +276,58 @@ export const generateSite = createServerFn({ method: "POST" })
 
       if (GEMINI_KEY) {
         try {
-          const instPrompt = `Você é um diretor de criação e copywriter corporativo brasileiro sênior.
-Crie o conteúdo institucional (Missão, Quem Somos) e o catálogo de serviços especializados ("Soluções Especializadas") para a seguinte empresa:
+          const cnaeDetails = input.cnae_details || (input.company_data as any)?.cnae_details;
+          const cnaeDescriptors = Array.isArray(cnaeDetails?.descritores) && cnaeDetails.descritores.length > 0
+            ? `\n- Descritores oficiais de serviços desta atividade (IBGE): ${cnaeDetails.descritores.slice(0, 15).join("; ")}`
+            : "";
+          const cnaeCompreende = Array.isArray(cnaeDetails?.compreende) && cnaeDetails.compreende.length > 0
+            ? `\n- O que esta atividade compreende: ${cnaeDetails.compreende.slice(0, 3).join(" ")}`
+            : "";
+          const cnaeSecundarias = Array.isArray(cnaeDetails?.secundarias) && cnaeDetails.secundarias.length > 0
+            ? `\n- Atividades secundárias cadastradas: ${cnaeDetails.secundarias.slice(0, 5).join("; ")}`
+            : "";
+
+          const instPrompt = `Você é um diretor de criação e copywriter corporativo brasileiro de altíssimo nível.
+Gere conteúdo institucional (Hero, Missão, Quem Somos) e o catálogo de serviços especializados ("Soluções Especializadas") para a seguinte empresa, baseado ESTRITAMENTE no nicho real deste CNPJ:
 
 DADOS DA EMPRESA:
 - Nome Fantasia / Marca: ${finalCompanyData.name}
 - Razão Social: ${finalCompanyData.legal_name}
-- Ramo de Atuação / Atividade Principal (CNAE): ${finalCompanyData.activity_area}
+${finalCompanyData.cnpj ? `- CNPJ: ${finalCompanyData.cnpj}` : ""}
+- Ramo de Atuação / Atividade Principal (CNAE): ${finalCompanyData.activity_area}${cnaeDescriptors}${cnaeCompreende}${cnaeSecundarias}
 ${finalCompanyData.address_city ? `- Cidade/UF: ${finalCompanyData.address_city}/${finalCompanyData.address_state}` : ""}
 ${input.goal ? `- Objetivo: ${input.goal}` : ""}
 
 REGRAS OBRIGATÓRIAS:
-1. RECONHEÇA O NICHO REAL DA EMPRESA: Analise com máxima atenção o Ramo de Atuação ("${finalCompanyData.activity_area}") e a Razão Social ("${finalCompanyData.legal_name}").
-2. NÃO use termos genéricos de assessoria ou consultoria se a empresa atuar em confecção de roupas, vestuário, comércio, alimentação, construção civil, transporte/logística, saúde, etc.
-3. Descreva a Missão e o Quem Somos com vocabulário técnico e profissional fiel ao que a empresa REALMENTE fabrica, comercializa ou executa.
-4. Em "services" ("Soluções Especializadas"), gere entre 3 e 5 serviços/produtos específicos desse nicho com nomes atrativos, descrições claras e categorias adequadas.
-5. Retorne APENAS um JSON válido, sem markdown.
+1. RECONHECIMENTO ABSOLUTO DO NICHO: Baseie-se DIRETAMENTE nas atividades e descritores acima. O site DEVE refletir 100% o que a empresa realmente faz ou comercializa (ex: se for refrigeração/ar condicionado, fale de climatização central, dutos, PMOC e refrigeração; se for vestuário/confecção, fale de peças, tecidos e moda; se for bijuterias, fale de semijoias e design; se for agricultura, fale de cultivo e produção rural).
+2. NUNCA use termos genéricos como "assessoria empresarial" ou "consultoria estratégica" a menos que a empresa seja de fato de consultoria.
+3. Crie uma Missão inspiradora, ética e tecnicamente conectada ao setor da empresa (2-3 frases).
+4. Crie 3 pilares da missão ("pillars") específicos e técnicos do nicho (cada um com "title" e "description").
+5. Crie o texto de Quem Somos ("about_body") com 3 a 5 frases ricas, destacando excelência operacional, rigor de execução e atuação local/regional na cidade de ${finalCompanyData.address_city || "sua região"}.
+6. Em "services" ("Soluções Especializadas"), gere entre 4 e 6 serviços/produtos altamente específicos desse nicho, detalhando o que é feito, benefícios para o cliente, categoria e ícone Lucide apropriado (ex: Wind, ShieldCheck, Wrench, RefreshCw, Scissors, Sparkles, Truck, Package, Hammer, Cpu, Zap, ShoppingBag, Heart, Coffee, Utensils).
+7. Retorne APENAS um JSON válido.
 
 FORMATO JSON ESPERADO:
 {
-  "hero_badge": "Frase curta de destaque do nicho (ex: Excelência em Confecção e Vestuário)",
-  "hero_subtitle": "Subtítulo claro explicando o que a empresa faz e sua proposta de valor (1-2 frases)",
+  "hero_badge": "Frase de destaque do nicho (3 a 5 palavras)",
+  "hero_subtitle": "Subtítulo explicando o que a empresa faz com proposta de valor forte (1-2 frases)",
   "mission_title": "Nossa Missão",
   "mission_description": "Texto da missão focado no nicho de atuação e compromisso com o cliente (2-3 frases)",
+  "pillars": [
+    { "title": "Pilar 1", "description": "Descrição do pilar 1 conectada à qualidade do nicho" },
+    { "title": "Pilar 2", "description": "Descrição do pilar 2 conectada à conformidade e precisão" },
+    { "title": "Pilar 3", "description": "Descrição do pilar 3 conectada ao atendimento e pontualidade" }
+  ],
   "about_title": "Sobre a ${finalCompanyData.name}",
   "about_body": "Texto de quem somos destacando especialização, dedicação e qualidade no nicho (3-4 frases)",
   "about_highlight": "Frase de autoridade no nicho",
   "services_title": "Nossas Soluções Especializadas",
-  "services_subtitle": "Produtos e serviços planejados para atender às necessidades específicas do seu negócio.",
+  "services_subtitle": "Serviços técnicos e soluções planejadas para garantir eficiência e continuidade do seu negócio.",
   "services": [
     {
-      "name": "Nome do Serviço/Produto 1 no nicho",
+      "name": "Nome do Serviço 1 no nicho",
       "description": "Descrição clara e persuasiva do serviço ou produto",
-      "icon": "Scissors",
+      "icon": "IconeLucide",
       "category": "Categoria ou badge"
     }
   ]
@@ -324,6 +364,9 @@ FORMATO JSON ESPERADO:
             }
             if (parsed.mission_title) {
               finalCompanyData.mission_title = parsed.mission_title;
+            }
+            if (Array.isArray(parsed.pillars) && parsed.pillars.length > 0) {
+              finalCompanyData.pillars = parsed.pillars;
             }
             if (parsed.about_body) {
               finalCompanyData.about_description = parsed.about_body;
