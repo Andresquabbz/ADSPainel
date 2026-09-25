@@ -43,6 +43,7 @@ interface CreateSiteWizardProps {
 type WizardData = {
   name: string;
   business_name: string;
+  activity_area: string;
   category: string;
   goal: string;
   style: string;
@@ -84,6 +85,7 @@ interface CnpjResult {
 const INITIAL_DATA: WizardData = {
   name: "",
   business_name: "",
+  activity_area: "",
   category: "",
   goal: "",
   style: "",
@@ -117,14 +119,15 @@ function formatPhone(ddd: string | null, tel: string | null): string {
 function guessCategory(descricao: string | null): string {
   if (!descricao) return "";
   const d = descricao.toLowerCase();
-  if (d.includes("restaurante") || d.includes("alimenta") || d.includes("bar") || d.includes("café")) return "Restaurante";
-  if (d.includes("loja") || d.includes("comércio") || d.includes("varejo") || d.includes("venda")) return "Loja";
-  if (d.includes("saúde") || d.includes("clínica") || d.includes("médic") || d.includes("odont") || d.includes("farmácia")) return "Saúde";
-  if (d.includes("imóv") || d.includes("imobil")) return "Imobiliária";
-  if (d.includes("advogad") || d.includes("jurídic")) return "Advocacia";
-  if (d.includes("tecnolog") || d.includes("softwar") || d.includes("inform")) return "Tecnologia";
-  if (d.includes("constru") || d.includes("engenharia") || d.includes("reforma")) return "Construção";
-  if (d.includes("market") || d.includes("publicidad") || d.includes("propaganda")) return "Marketing";
+  if (d.includes("restaurante") || d.includes("alimenta") || d.includes("bar") || d.includes("café") || d.includes("lanche") || d.includes("padaria") || d.includes("pizza") || d.includes("hamburg")) return "Restaurante";
+  if (d.includes("loja") || d.includes("comércio") || d.includes("varejo") || d.includes("venda") || d.includes("roupa") || d.includes("vestuário") || d.includes("confecc") || d.includes("calcado") || d.includes("otica")) return "Loja";
+  if (d.includes("saúde") || d.includes("clínica") || d.includes("médic") || d.includes("odont") || d.includes("farmácia") || d.includes("fisioter") || d.includes("psicol")) return "Saúde";
+  if (d.includes("imóv") || d.includes("imobil") || d.includes("corretor de imov")) return "Imobiliária";
+  if (d.includes("advogad") || d.includes("jurídic") || d.includes("direito")) return "Advocacia";
+  if (d.includes("tecnolog") || d.includes("softwar") || d.includes("inform") || d.includes("computad") || d.includes("internet")) return "Tecnologia";
+  if (d.includes("constru") || d.includes("engenharia") || d.includes("reforma") || d.includes("obra") || d.includes("predial")) return "Construção";
+  if (d.includes("market") || d.includes("publicidad") || d.includes("propaganda") || d.includes("design") || d.includes("agencia")) return "Marketing";
+  if (d.includes("contab") || d.includes("financeiro") || d.includes("consultoria") || d.includes("assessoria") || d.includes("bpo")) return "Institucional / Serviços / Financeiro";
   return "Serviços";
 }
 
@@ -206,10 +209,12 @@ export function CreateSiteWizard({
       const fantasia = json.estabelecimento.nome_fantasia;
       const razao = json.razao_social;
       const tel = formatPhone(json.estabelecimento.ddd1, json.estabelecimento.telefone1);
+      const cnaeDesc = json.estabelecimento.atividade_principal?.descricao || "";
       const isInst = selectedTemplateId === "empresa-institucional";
+      const guessedCat = guessCategory(cnaeDesc);
       const categoria = isInst
         ? "Institucional / Serviços / Financeiro"
-        : guessCategory(json.estabelecimento.atividade_principal?.descricao ?? null);
+        : (guessedCat || "Serviços");
 
       const cleanedRazao = cleanBusinessName(razao);
       const suggestedName = fantasia?.trim() ? fantasia.trim() : (cleanedRazao || razao.trim());
@@ -242,13 +247,14 @@ export function CreateSiteWizard({
         address_city: json.estabelecimento.cidade?.nome ?? "",
         address_state: json.estabelecimento.estado?.sigla ?? "",
         address_zip: zip,
-        activity_area: json.estabelecimento.atividade_principal?.descricao || "",
+        activity_area: cnaeDesc,
       });
 
       setData((prev) => ({
         ...prev,
         name: suggestedName,
         business_name: cleanedRazao || razao.trim(),
+        activity_area: cnaeDesc,
         category: categoria,
         goal: isInst ? "Apresentar a empresa e captar clientes corporativos" : "Captar clientes",
         style: isInst ? "Corporativo" : prev.style || "",
@@ -260,7 +266,9 @@ export function CreateSiteWizard({
         state: json.estabelecimento.estado?.sigla ?? "",
       }));
 
-      toast.success("Dados importados com sucesso!");
+      toast.success("Dados importados com sucesso!", {
+        description: cnaeDesc ? `Nicho identificado: ${cnaeDesc}` : undefined,
+      });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao consultar CNPJ.");
     } finally {
@@ -314,12 +322,19 @@ export function CreateSiteWizard({
         selectedTemplateId === "empresa-institucional" ||
         data.category === "Institucional / Serviços / Financeiro";
 
+      const effectiveActivityArea =
+        data.activity_area.trim() ||
+        extraCompanyData.activity_area ||
+        (data.category !== "Institucional / Serviços / Financeiro" ? data.category : "") ||
+        "Serviços Especializados";
+
       const result = await generateSite({
         data: {
           name: data.name.trim(),
           business_name: data.business_name.trim(),
           cnpj: cnpjFormatted || null,
           category: data.category || null,
+          activity_area: effectiveActivityArea,
           goal: data.goal || null,
           style: data.style || null,
           primary_color: data.primary_color,
@@ -330,21 +345,19 @@ export function CreateSiteWizard({
           city: data.city.trim() || null,
           state: data.state.trim() || null,
           template_id: isInst ? "empresa-institucional" : null,
-          company_data: isInst
-            ? {
-                ...extraCompanyData,
-                name: data.name.trim(),
-                fantasy_name: data.name.trim(),
-                legal_name: data.business_name.trim() || data.name.trim(),
-                cnpj: cnpjFormatted || extraCompanyData.cnpj || "",
-                phone: data.phone.trim() || extraCompanyData.phone || "",
-                whatsapp: data.whatsapp.trim() || extraCompanyData.whatsapp || "",
-                email: data.email.trim() || extraCompanyData.email || "",
-                address_city: data.city.trim() || extraCompanyData.address_city || "",
-                address_state: data.state.trim() || extraCompanyData.address_state || "",
-                activity_area: extraCompanyData.activity_area || (data.category !== "Institucional / Serviços / Financeiro" ? data.category : "") || data.goal || "Serviços Especializados",
-              }
-            : undefined,
+          company_data: {
+            ...extraCompanyData,
+            name: data.name.trim(),
+            fantasy_name: data.name.trim(),
+            legal_name: data.business_name.trim() || data.name.trim(),
+            cnpj: cnpjFormatted || extraCompanyData.cnpj || "",
+            phone: data.phone.trim() || extraCompanyData.phone || "",
+            whatsapp: data.whatsapp.trim() || extraCompanyData.whatsapp || "",
+            email: data.email.trim() || extraCompanyData.email || "",
+            address_city: data.city.trim() || extraCompanyData.address_city || "",
+            address_state: data.state.trim() || extraCompanyData.address_state || "",
+            activity_area: effectiveActivityArea,
+          },
         },
       });
 
@@ -597,6 +610,25 @@ export function CreateSiteWizard({
                     onChange={(e) => setField("business_name", e.target.value)}
                     className="h-11"
                   />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="label-mono text-muted-foreground">Ramo de Atuação / Nicho Real *</Label>
+                    <span className="text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded font-semibold">
+                      Identificação do Nicho
+                    </span>
+                  </div>
+                  <Input
+                    placeholder="Ex: Confecção de roupas, Oficina mecânica, Barbearia, Pet shop, etc."
+                    value={data.activity_area}
+                    onChange={(e) => setField("activity_area", e.target.value)}
+                    className="h-11 font-medium"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {cnpjResult?.estabelecimento.atividade_principal?.descricao
+                      ? "Identificado a partir do CNAE do CNPJ. Você pode editar para refinar o conteúdo gerado."
+                      : "Descreva com clareza o que a empresa faz para que a IA e os modelos gerem serviços, diferenciais e textos 100% personalizados ao seu ramo."}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

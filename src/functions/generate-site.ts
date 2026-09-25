@@ -25,6 +25,7 @@ export const GenerateSiteInput = z
     city: z.string().trim().max(80).optional().nullable(),
     state: z.string().trim().max(10).optional().nullable(),
     template_id: z.string().trim().max(80).optional().nullable(),
+    activity_area: z.string().trim().max(250).optional().nullable(),
     company_data: z.record(z.any()).optional().nullable(),
   })
   .strict();
@@ -55,15 +56,19 @@ function buildPrompt(input: GenerateSiteInputType): string {
   };
 
   const styleDesc = styleHints[input.style ?? ""] ?? "profissional e moderno";
+  const rawActivity = input.activity_area || (input.company_data as any)?.activity_area || "";
+  const cleanActivity = rawActivity.replace(/^(\d{2}\.\d{2}-\d-\d{2}\s*-\s*)/, "").trim();
+  const effectiveNiche = cleanActivity || input.category || "negócio e comércio";
 
-  return `Você é um copywriter especialista em sites para o mercado brasileiro.
-Gere conteúdo completo e personalizado para um site de ${input.category ?? "negócio"} com estilo ${styleDesc}.
+  return `Você é um copywriter especialista em criação de sites para o mercado brasileiro.
+Gere conteúdo completo, atraente e 100% PERSONALIZADO para um negócio de ${effectiveNiche} com estilo ${styleDesc}.
 
 DADOS DO NEGÓCIO:
-- Nome do site: ${input.name}
-- Empresa: ${input.business_name}
+- Nome Fantasia / Marca: ${input.name}
+- Razão Social: ${input.business_name}
+- Ramo de Atuação / Nicho Real: ${effectiveNiche}
 ${input.cnpj ? `- CNPJ: ${input.cnpj}` : ""}
-${input.category ? `- Segmento: ${input.category}` : ""}
+${input.category ? `- Segmento Geral: ${input.category}` : ""}
 ${input.goal ? `- Objetivo principal: ${input.goal}` : ""}
 ${input.city ? `- Cidade: ${input.city}${input.state ? `/${input.state}` : ""}` : ""}
 ${input.phone ? `- Telefone: ${input.phone}` : ""}
@@ -71,14 +76,16 @@ ${input.whatsapp ? `- WhatsApp: ${input.whatsapp}` : ""}
 ${input.email ? `- E-mail: ${input.email}` : ""}
 
 REGRAS OBRIGATÓRIAS:
-1. Retorne APENAS JSON válido, sem markdown, sem texto adicional
-2. Textos em português brasileiro natural e profissional
-3. O hero deve ter um título impactante de até 8 palavras, focado no benefício do cliente
-4. Mencione a cidade quando disponível para gerar conexão local
-5. Inclua 4 features com emojis relevantes ao nicho
-6. O about deve contar a história/missão de forma autêntica com 2-3 frases
-7. Gere entre 4 e 7 seções dependendo do nicho
-8. Inclua OBRIGATORIAMENTE uma seção do tipo "privacy_policy" em conformidade com a LGPD
+1. RECONHEÇA E HONRE O NICHO REAL DO NEGÓCIO: O conteúdo (títulos, subtítulos, diferenciais, serviços, sobre nós) DEVE SER 100% FIEL ao ramo de atuação ("${effectiveNiche}").
+2. JAMAIS use termos genéricos de "consultoria" ou "assessoria" se o negócio for de outro ramo (ex: roupas/vestuário/moda, oficina mecânica, salão de beleza, barbearia, restaurante, pet shop, clínica médica, etc.).
+3. A seção "services" deve conter serviços/produtos reais e específicos desse nicho com nomes atrativos e descrições claras.
+4. O hero deve ter um título impactante de até 8 palavras, focado no benefício do cliente.
+5. Mencione a cidade quando disponível para gerar conexão local.
+6. Inclua 4 features com emojis relevantes ao nicho.
+7. O about deve contar a história/missão de forma autêntica com 2-3 frases no nicho.
+8. Gere entre 4 e 7 seções dependendo do nicho.
+9. Inclua OBRIGATORIAMENTE uma seção do tipo "privacy_policy" em conformidade com a LGPD.
+10. Retorne APENAS JSON válido, sem markdown, sem texto adicional em português brasileiro natural e profissional.
 
 ESTRUTURA JSON ESPERADA:
 {
@@ -210,6 +217,12 @@ export const generateSite = createServerFn({ method: "POST" })
 
     if (isInstitutional) {
       const rawCompanyData = input.company_data || {};
+      const resolvedActivity =
+        input.activity_area?.trim() ||
+        rawCompanyData.activity_area?.trim() ||
+        (input.category && input.category !== "Institucional / Serviços / Financeiro" ? input.category : "") ||
+        "Serviços Especializados";
+
       finalCompanyData = {
         ...INITIAL_COMPANY_DATA,
         name: input.name,
@@ -221,8 +234,8 @@ export const generateSite = createServerFn({ method: "POST" })
         email: input.email || rawCompanyData.email || "",
         address_city: input.city || rawCompanyData.address_city || "",
         address_state: input.state || rawCompanyData.address_state || "",
-        activity_area: rawCompanyData.activity_area || input.goal || "Serviços Especializados",
         ...rawCompanyData,
+        activity_area: resolvedActivity,
       };
 
       if (GEMINI_KEY) {

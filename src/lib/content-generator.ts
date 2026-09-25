@@ -8,6 +8,7 @@ export interface SiteInfo {
   name: string;
   business_name: string;
   category?: string | null | undefined;
+  activity_area?: string | null | undefined;
   goal?: string | null | undefined;
   phone?: string | null | undefined;
   whatsapp?: string | null | undefined;
@@ -37,7 +38,7 @@ const TEMPLATES: Record<string, (s: SiteInfo) => Section[]> = {
       email: s.email || "",
       address_city: s.city || "",
       address_state: s.state || "",
-      activity_area: s.goal || "Serviços Institucionais e Corporativos",
+      activity_area: s.activity_area || s.goal || "Serviços Especializados",
     }) as Section[],
 
   "Empresa Institucional": (s) =>
@@ -50,7 +51,7 @@ const TEMPLATES: Record<string, (s: SiteInfo) => Section[]> = {
       email: s.email || "",
       address_city: s.city || "",
       address_state: s.state || "",
-      activity_area: s.goal || "Serviços Institucionais e Corporativos",
+      activity_area: s.activity_area || s.goal || "Serviços Especializados",
     }) as Section[],
 
   Restaurante: (s) => [
