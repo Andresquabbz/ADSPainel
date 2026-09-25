@@ -46,6 +46,15 @@ function extractMetaVerification(raw: string | null | undefined): string | null 
   return trimmed.replace(/<[^>]*>?/gm, "").trim();
 }
 
+function isRealLink(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  const lower = url.trim().toLowerCase();
+  if (!lower || lower === "#" || lower.includes("atlascorp") || lower.includes("example.com")) {
+    return false;
+  }
+  return true;
+}
+
 export const Route = createFileRoute("/s/$siteSlug")({
   loader: async ({ params }) => {
     try {
@@ -361,7 +370,7 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
       company?.youtube,
       company?.tiktok,
       company?.website,
-    ].filter(Boolean),
+    ].filter((u): u is string => isRealLink(u)),
   };
 
   return (
@@ -992,27 +1001,27 @@ function PublicSectionRenderer({
 
             {/* Social Networks (Only rendered when filled) */}
             <div className="flex flex-wrap justify-center gap-3 pt-2">
-              {s.instagram && (
+              {isRealLink(s.instagram) && (
                 <a href={s.instagram} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Instagram">
                   <Instagram className="h-5 w-5" />
                 </a>
               )}
-              {s.linkedin && (
+              {isRealLink(s.linkedin) && (
                 <a href={s.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="LinkedIn">
                   <Linkedin className="h-5 w-5" />
                 </a>
               )}
-              {s.facebook && (
+              {isRealLink(s.facebook) && (
                 <a href={s.facebook} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Facebook">
                   <Facebook className="h-5 w-5" />
                 </a>
               )}
-              {s.youtube && (
+              {isRealLink(s.youtube) && (
                 <a href={s.youtube} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="YouTube">
                   <Youtube className="h-5 w-5" />
                 </a>
               )}
-              {s.website && (
+              {isRealLink(s.website) && (
                 <a href={s.website} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Website">
                   <Globe className="h-5 w-5" />
                 </a>

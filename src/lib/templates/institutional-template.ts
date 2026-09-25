@@ -132,23 +132,23 @@ export const INITIAL_COMPANY_DATA: CompanyData = {
   company_type: "Matriz",
   share_capital: "R$ 150.000,00",
 
-  address_street: "Avenida Paulista",
-  address_number: "1000",
-  address_complement: "Conjunto 1402",
-  address_neighborhood: "Bela Vista",
-  address_city: "São Paulo",
-  address_state: "SP",
-  address_cep: "01310-100",
+  address_street: "",
+  address_number: "",
+  address_complement: "",
+  address_neighborhood: "",
+  address_city: "",
+  address_state: "",
+  address_cep: "",
   show_map: true,
 
-  phone: "(11) 3210-4000",
-  whatsapp: "(11) 98765-4321",
-  email: "contato@atlascorp.com.br",
-  website: "https://atlascorp.com.br",
+  phone: "",
+  whatsapp: "",
+  email: "",
+  website: "",
 
-  instagram: "https://instagram.com/atlascorp",
-  facebook: "https://facebook.com/atlascorp",
-  linkedin: "https://linkedin.com/company/atlascorp",
+  instagram: "",
+  facebook: "",
+  linkedin: "",
   youtube: "",
   tiktok: "",
 
@@ -203,7 +203,7 @@ export const INITIAL_COMPANY_DATA: CompanyData = {
 
   floating_whatsapp: {
     enabled: true,
-    phone: "(11) 98765-4321",
+    phone: "",
     message: "Olá! Gostaria de saber mais informações sobre os serviços.",
     label: "Fale Conosco",
   },
@@ -213,7 +213,7 @@ export const INITIAL_COMPANY_DATA: CompanyData = {
       "Nossa instituição assume o compromisso rigoroso com a segurança, sigilo e proteção dos dados pessoais de nossos clientes, parceiros e usuários. Em conformidade integral com a Lei Geral de Proteção de Dados Pessoais (LGPD - Lei nº 13.709/2018), coletamos apenas as informações estritamente necessárias para prestação dos serviços contratados, resposta a contatos e cumprimento de obrigações legais.",
     terms_text:
       "O acesso e a utilização dos serviços e canais desta plataforma estão condicionados à aceitação e cumprimento destes termos. As informações prestadas destinam-se exclusivamente a fins de relacionamento institucional e contratação de serviços.",
-    dpo_contact: "privacidade@atlascorp.com.br",
+    dpo_contact: "",
   },
 
   primary_color: "#1e3a8a",
@@ -1382,11 +1382,12 @@ export function generateInstitutionalSections(data: Partial<CompanyData>): Templ
     floating_whatsapp: {
       ...INITIAL_COMPANY_DATA.floating_whatsapp,
       ...(data.floating_whatsapp || {}),
-      phone: data.whatsapp || data.floating_whatsapp?.phone || INITIAL_COMPANY_DATA.floating_whatsapp.phone,
+      phone: data.whatsapp || data.phone || data.floating_whatsapp?.phone || "",
     },
     privacy: {
       ...INITIAL_COMPANY_DATA.privacy,
       ...(data.privacy || {}),
+      dpo_contact: data.privacy?.dpo_contact || data.email || merged?.email || "",
     },
   };
 

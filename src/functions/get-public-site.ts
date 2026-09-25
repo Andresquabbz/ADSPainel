@@ -110,6 +110,49 @@ export const getPublicSite = createServerFn({ method: "GET" })
       return { site: null, pages: [], isPublished: false };
     }
 
+    // Sanitize any leftover placeholder template values (e.g. atlascorp dummy links/dpo)
+    if (site?.content && typeof site.content === "object") {
+      const c = site.content as any;
+      if (c.company_data) {
+        if (c.company_data.website?.includes("atlascorp")) c.company_data.website = "";
+        if (c.company_data.facebook?.includes("atlascorp")) c.company_data.facebook = "";
+        if (c.company_data.instagram?.includes("atlascorp")) c.company_data.instagram = "";
+        if (c.company_data.linkedin?.includes("atlascorp")) c.company_data.linkedin = "";
+        if (c.company_data.address_complement === "Conjunto 1402") c.company_data.address_complement = "";
+        if (c.company_data.privacy?.dpo_contact?.includes("atlascorp")) {
+          c.company_data.privacy.dpo_contact = c.company_data.email || site.email || "";
+        }
+        if (c.company_data.floating_whatsapp?.phone === "(11) 98765-4321") {
+          c.company_data.floating_whatsapp.phone = c.company_data.whatsapp || site.whatsapp || "";
+        }
+      }
+      if (Array.isArray(c.sections)) {
+        c.sections = c.sections.map((sec: any) => {
+          if (sec.type === "contact") {
+            const cleanSec = { ...sec };
+            if (cleanSec.website?.includes("atlascorp")) cleanSec.website = "";
+            if (cleanSec.facebook?.includes("atlascorp")) cleanSec.facebook = "";
+            if (cleanSec.instagram?.includes("atlascorp")) cleanSec.instagram = "";
+            if (cleanSec.linkedin?.includes("atlascorp")) cleanSec.linkedin = "";
+            return cleanSec;
+          }
+          if (sec.type === "location") {
+            const cleanSec = { ...sec };
+            if (cleanSec.address_complement === "Conjunto 1402") cleanSec.address_complement = "";
+            return cleanSec;
+          }
+          if (sec.type === "privacy_policy" || sec.type === "privacy") {
+            const cleanSec = { ...sec };
+            if (cleanSec.dpo_contact?.includes("atlascorp")) {
+              cleanSec.dpo_contact = site.email || "";
+            }
+            return cleanSec;
+          }
+          return sec;
+        });
+      }
+    }
+
     // 2. Fetch pages
     const { data: pages } = await supabase
       .from("site_pages")
@@ -136,6 +179,33 @@ export const getPublicSite = createServerFn({ method: "GET" })
         ];
       }
     }
+
+    finalPages = finalPages.map((p) => {
+      if (Array.isArray(p.sections)) {
+        return {
+          ...p,
+          sections: p.sections.map((sec: any) => {
+            if (sec.type === "contact") {
+              const cleanSec = { ...sec };
+              if (cleanSec.website?.includes("atlascorp")) cleanSec.website = "";
+              if (cleanSec.facebook?.includes("atlascorp")) cleanSec.facebook = "";
+              if (cleanSec.instagram?.includes("atlascorp")) cleanSec.instagram = "";
+              if (cleanSec.linkedin?.includes("atlascorp")) cleanSec.linkedin = "";
+              return cleanSec;
+            }
+            if (sec.type === "privacy_policy" || sec.type === "privacy") {
+              const cleanSec = { ...sec };
+              if (cleanSec.dpo_contact?.includes("atlascorp")) {
+                cleanSec.dpo_contact = site.email || "";
+              }
+              return cleanSec;
+            }
+            return sec;
+          }),
+        };
+      }
+      return p;
+    });
 
     return {
       site,
