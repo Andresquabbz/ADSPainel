@@ -54,6 +54,9 @@ const SECTION_TYPE_LABELS: Record<string, { label: string; icon: React.Component
   privacy_policy: { label: "Política de Privacidade (LGPD)", icon: ShieldCheck },
 };
 
+// Only these section types can be fully edited by the user
+const EDITABLE_SECTION_TYPES = new Set(["hero", "contact"]);
+
 export function SectionList({
   sections,
   onChange,
@@ -132,13 +135,19 @@ export function SectionList({
 
   // If a section is selected for editing, show the detailed SectionFormEditor
   if (selectedSectionIndex !== null && sections[selectedSectionIndex]) {
-    return (
-      <SectionFormEditor
-        section={sections[selectedSectionIndex]}
-        onChange={handleSectionChange}
-        onBack={() => onSelectSection(null)}
-      />
-    );
+    const selectedType = sections[selectedSectionIndex]?.type;
+    // Only allow editing if this section type is editable
+    if (EDITABLE_SECTION_TYPES.has(selectedType)) {
+      return (
+        <SectionFormEditor
+          section={sections[selectedSectionIndex]}
+          onChange={handleSectionChange}
+          onBack={() => onSelectSection(null)}
+        />
+      );
+    }
+    // If a locked section was somehow selected, go back to list
+    onSelectSection(null);
   }
 
   return (
@@ -170,101 +179,131 @@ export function SectionList({
           };
           const Icon = typeInfo.icon;
           const isSelected = selectedSectionIndex === idx;
+          const isEditable = EDITABLE_SECTION_TYPES.has(sec.type);
 
           return (
             <div
               key={idx}
               className={`group flex items-center justify-between p-3 rounded-lg border transition-all ${
-                isSelected
+                isSelected && isEditable
                   ? "border-primary bg-primary/10 shadow-sm"
-                  : "border-border bg-card hover:border-border/80 hover:bg-muted/40"
+                  : isEditable
+                    ? "border-border bg-card hover:border-border/80 hover:bg-muted/40"
+                    : "border-border/50 bg-muted/20 opacity-70"
               }`}
             >
               <button
                 type="button"
-                onClick={() => onSelectSection(idx)}
-                className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+                onClick={() => isEditable && onSelectSection(idx)}
+                className={`flex items-center gap-2.5 flex-1 min-w-0 text-left ${
+                  isEditable ? "cursor-pointer" : "cursor-default"
+                }`}
+                disabled={!isEditable}
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground group-hover:text-foreground shrink-0">
+                <div className={`flex h-7 w-7 items-center justify-center rounded-md shrink-0 ${
+                  isEditable
+                    ? "bg-muted text-muted-foreground group-hover:text-foreground"
+                    : "bg-muted/50 text-muted-foreground/50"
+                }`}>
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 <div className="truncate">
-                  <p className="font-semibold text-xs truncate">
+                  <p className={`font-semibold text-xs truncate ${!isEditable ? "text-muted-foreground" : ""}`}>
                     {String(sec.title || typeInfo.label)}
                   </p>
                   <p className="font-mono text-[10px] text-muted-foreground uppercase">
-                    {typeInfo.label}
+                    {isEditable ? typeInfo.label : "🔒 Gerado pela IA"}
                   </p>
                 </div>
               </button>
 
               <div className="flex items-center gap-1 shrink-0 ml-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => moveUp(idx)}
-                  disabled={idx === 0}
-                  title="Mover para cima"
-                >
-                  <ChevronUp className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => moveDown(idx)}
-                  disabled={idx === sections.length - 1}
-                  title="Mover para baixo"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={`h-7 w-7 p-0 ${
-                    sec.enabled === false
-                      ? "text-muted-foreground/40 hover:text-foreground"
-                      : "text-primary hover:text-primary/80"
-                  }`}
-                  onClick={() => toggleSectionEnabled(idx)}
-                  title={sec.enabled === false ? "Seção desativada (Clique para ativar)" : "Seção visível (Clique para desativar)"}
-                >
-                  {sec.enabled === false ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                  onClick={() => onSelectSection(idx)}
-                  title="Editar bloco"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => duplicateSection(idx)}
-                  title="Duplicar seção"
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteSection(idx)}
-                  title="Excluir seção"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {isEditable ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => moveUp(idx)}
+                      disabled={idx === 0}
+                      title="Mover para cima"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => moveDown(idx)}
+                      disabled={idx === sections.length - 1}
+                      title="Mover para baixo"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={`h-7 w-7 p-0 ${
+                        sec.enabled === false
+                          ? "text-muted-foreground/40 hover:text-foreground"
+                          : "text-primary hover:text-primary/80"
+                      }`}
+                      onClick={() => toggleSectionEnabled(idx)}
+                      title={sec.enabled === false ? "Seção desativada (Clique para ativar)" : "Seção visível (Clique para desativar)"}
+                    >
+                      {sec.enabled === false ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                      onClick={() => onSelectSection(idx)}
+                      title="Editar bloco"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => duplicateSection(idx)}
+                      title="Duplicar seção"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteSection(idx)}
+                      title="Excluir seção"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                ) : (
+                  // Locked section: show only visibility toggle
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={`h-7 w-7 p-0 ${
+                      sec.enabled === false
+                        ? "text-muted-foreground/40 hover:text-foreground"
+                        : "text-muted-foreground/60 hover:text-foreground"
+                    }`}
+                    onClick={() => toggleSectionEnabled(idx)}
+                    title={sec.enabled === false ? "Seção desativada (Clique para ativar)" : "Ocultar seção"}
+                  >
+                    {sec.enabled === false ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
               </div>
             </div>
           );
