@@ -1387,7 +1387,7 @@ export function generateInstitutionalSections(data: Partial<CompanyData>): Templ
     privacy: {
       ...INITIAL_COMPANY_DATA.privacy,
       ...(data.privacy || {}),
-      dpo_contact: data.privacy?.dpo_contact || data.email || merged?.email || "",
+      dpo_contact: data.privacy?.dpo_contact || data.email || "",
     },
   };
 
