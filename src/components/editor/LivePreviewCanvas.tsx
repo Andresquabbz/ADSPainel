@@ -363,22 +363,22 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
           style={{ backgroundColor: theme.isDark ? undefined : primary + "12" }}
         >
           <div className="max-w-3xl mx-auto space-y-4">
-            {(company?.hero_badge || s.badge) && (
+            {(s.badge || company?.hero_badge) && (
               <span
                 className={`inline-block px-3.5 py-1 text-xs font-mono font-bold uppercase tracking-wider text-white ${theme.badgeRadius}`}
                 style={{ backgroundColor: primary }}
               >
-                {t(company?.hero_badge || s.badge)}
+                {t(s.badge || company?.hero_badge)}
               </span>
             )}
             <h1
               className={`text-4xl sm:text-5xl ${theme.headingClass} leading-tight font-extrabold`}
               style={{ color: primary }}
             >
-              {t(company?.fantasy_name || company?.name || s.title || ctx.name)}
+              {t(s.title || company?.fantasy_name || company?.name || ctx.name)}
             </h1>
             <p className={`text-base sm:text-lg ${theme.subheadingClass} max-w-xl mx-auto leading-relaxed`}>
-              {t(company?.hero_subtitle || s.subtitle || "Soluções corporativas completas com alta qualidade e excelência.")}
+              {t(s.subtitle || company?.hero_subtitle || "Soluções corporativas completas com alta qualidade e excelência.")}
             </p>
             <div className="pt-4 flex flex-wrap justify-center gap-3">
               {s.cta_label && (

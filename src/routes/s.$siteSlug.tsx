@@ -159,6 +159,8 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
     queryKey: ["public-site", siteSlug],
     queryFn: () => getPublicSite({ data: siteSlug }),
     initialData,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -202,8 +204,32 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
   const primary = site.primary_color || "#1e3a8a";
   const font = site.font_family || "sans-serif";
   const cnpj = company?.cnpj || content?.cnpj;
-  const displayName = company?.name || site.name;
-  const displayWhatsapp = company?.whatsapp || site.whatsapp;
+
+  // Extract all sections from all pages (or redundant content backup)
+  const allSections: AnySection[] = [];
+  if (pages && pages.length > 0) {
+    for (const p of pages) {
+      const sArr = Array.isArray(p.sections) ? (p.sections as AnySection[]) : [];
+      allSections.push(...sArr);
+    }
+  }
+
+  if (allSections.length === 0 && site) {
+    const backupSecs = content?.["sections"];
+    if (Array.isArray(backupSecs) && backupSecs.length > 0) {
+      allSections.push(...(backupSecs as AnySection[]));
+    }
+  }
+
+  const heroSec = allSections.find((s) => s.type === "hero");
+  const contactSec = allSections.find((s) => s.type === "contact");
+
+  const displayName = heroSec?.title || company?.fantasy_name || company?.name || site.name;
+  const displayWhatsapp = contactSec?.whatsapp || company?.whatsapp || site.whatsapp;
+  const displayPhone = contactSec?.phone || company?.phone || site.phone;
+  const displayEmail = contactSec?.email || company?.email || site.email;
+  const displayAddress = contactSec?.address_street || company?.address_street || site.address;
+
   const floatingConfig = company?.floating_whatsapp || {
     enabled: true,
     phone: displayWhatsapp || "",
@@ -302,21 +328,6 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
   }
 
   // ── 2. PUBLISHED PRODUCTION SITE ───────────────────────────────────────────
-  const allSections: AnySection[] = [];
-  if (pages && pages.length > 0) {
-    for (const p of pages) {
-      const sArr = Array.isArray(p.sections) ? (p.sections as AnySection[]) : [];
-      allSections.push(...sArr);
-    }
-  }
-
-  if (allSections.length === 0 && site) {
-    const backupSecs = content?.["sections"];
-    if (Array.isArray(backupSecs) && backupSecs.length > 0) {
-      allSections.push(...(backupSecs as AnySection[]));
-    }
-  }
-
   const theme = getVisualStyle(site?.style);
 
   // Filter only enabled sections
@@ -638,22 +649,22 @@ function PublicSectionRenderer({
           style={{ backgroundColor: theme.isDark ? undefined : primary + "12" }}
         >
           <div className="max-w-4xl mx-auto space-y-6">
-            {s.badge && (
+            {(s.badge || companyData?.hero_badge) && (
               <span
                 className={`inline-block px-4 py-1.5 text-xs font-mono font-bold uppercase tracking-wider text-white shadow-sm ${theme.badgeRadius}`}
                 style={{ backgroundColor: primary }}
               >
-                {t(s.badge)}
+                {t(s.badge || companyData?.hero_badge)}
               </span>
             )}
             <h1
               className={`text-4xl sm:text-6xl ${theme.headingClass} leading-tight font-extrabold`}
               style={{ color: primary }}
             >
-              {t(s.title || businessName)}
+              {t(s.title || companyData?.fantasy_name || companyData?.name || businessName)}
             </h1>
             <p className={`text-lg sm:text-xl ${theme.subheadingClass} max-w-2xl mx-auto leading-relaxed`}>
-              {t(s.subtitle || "Soluções completas com qualidade, credibilidade e transparência.")}
+              {t(s.subtitle || companyData?.hero_subtitle || "Soluções completas com qualidade, credibilidade e transparência.")}
             </p>
             <div className="pt-4 flex flex-wrap justify-center gap-4">
               {s.cta_label && (
@@ -947,9 +958,10 @@ function PublicSectionRenderer({
 
     // ── CONTACT ──
     case "contact": {
-      const displayWpp = s.whatsapp || whatsapp;
-      const displayPhone = s.phone || phone;
-      const displayEmail = s.email || email;
+      const displayWpp = s.whatsapp || whatsapp || companyData?.whatsapp;
+      const displayPhone = s.phone || phone || companyData?.phone;
+      const displayEmail = s.email || email || companyData?.email;
+      const displayAddr = s.address_street || address || companyData?.address_street;
 
       return (
         <section id="contato" className={`py-20 px-6 ${theme.altSectionBgClass}`}>
@@ -991,38 +1003,38 @@ function PublicSectionRenderer({
                   {displayEmail}
                 </a>
               )}
-              {(address || city) && (
+              {(displayAddr || city) && (
                 <span className="inline-flex items-center gap-2">
                   <MapPin className="h-5 w-5" style={{ color: primary }} />
-                  {[address, city, state].filter(Boolean).join(", ")}
+                  {[displayAddr, city, state].filter(Boolean).join(", ")}
                 </span>
               )}
             </div>
 
             {/* Social Networks (Only rendered when filled) */}
             <div className="flex flex-wrap justify-center gap-3 pt-2">
-              {isRealLink(s.instagram) && (
-                <a href={s.instagram} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Instagram">
+              {isRealLink(s.instagram || companyData?.instagram) && (
+                <a href={s.instagram || companyData?.instagram} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Instagram">
                   <Instagram className="h-5 w-5" />
                 </a>
               )}
-              {isRealLink(s.linkedin) && (
-                <a href={s.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="LinkedIn">
+              {isRealLink(s.linkedin || companyData?.linkedin) && (
+                <a href={s.linkedin || companyData?.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="LinkedIn">
                   <Linkedin className="h-5 w-5" />
                 </a>
               )}
-              {isRealLink(s.facebook) && (
-                <a href={s.facebook} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Facebook">
+              {isRealLink(s.facebook || companyData?.facebook) && (
+                <a href={s.facebook || companyData?.facebook} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Facebook">
                   <Facebook className="h-5 w-5" />
                 </a>
               )}
-              {isRealLink(s.youtube) && (
-                <a href={s.youtube} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="YouTube">
+              {isRealLink(s.youtube || companyData?.youtube) && (
+                <a href={s.youtube || companyData?.youtube} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="YouTube">
                   <Youtube className="h-5 w-5" />
                 </a>
               )}
-              {isRealLink(s.website) && (
-                <a href={s.website} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Website">
+              {isRealLink(s.website || companyData?.website) && (
+                <a href={s.website || companyData?.website} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Website">
                   <Globe className="h-5 w-5" />
                 </a>
               )}

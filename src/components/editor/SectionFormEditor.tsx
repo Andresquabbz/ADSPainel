@@ -525,9 +525,91 @@ export function SectionFormEditor({ section, onChange, onBack }: SectionFormEdit
               placeholder="Ex: Fale Conosco"
             />
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Os dados de telefone, WhatsApp, e-mail e endereço são configurados na aba <strong>"Contato"</strong> da barra lateral e atualizados automaticamente nesta seção.
-          </p>
+
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Subtítulo</Label>
+            <Input
+              value={String(section.subtitle ?? "")}
+              onChange={(e) => setProp("subtitle", e.target.value)}
+              placeholder="Ex: Entre em contato pelos nossos canais de atendimento"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="label-mono text-muted-foreground">WhatsApp (com DDD)</Label>
+              <Input
+                value={String(section.whatsapp ?? "")}
+                onChange={(e) => setProp("whatsapp", e.target.value)}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="label-mono text-muted-foreground">Telefone Fixo / Comercial</Label>
+              <Input
+                value={String(section.phone ?? "")}
+                onChange={(e) => setProp("phone", e.target.value)}
+                placeholder="(11) 3333-3333"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">E-mail de Contato</Label>
+            <Input
+              type="email"
+              value={String(section.email ?? "")}
+              onChange={(e) => setProp("email", e.target.value)}
+              placeholder="contato@suaempresa.com.br"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="label-mono text-muted-foreground">Endereço Completo</Label>
+            <Input
+              value={String(section.address_street ?? "")}
+              onChange={(e) => setProp("address_street", e.target.value)}
+              placeholder="Av. Paulista, 1000 - Bela Vista, São Paulo - SP"
+            />
+          </div>
+
+          <div className="pt-2 border-t border-border space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase font-mono">Redes Sociais (Opcional)</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Instagram</Label>
+                <Input
+                  value={String(section.instagram ?? "")}
+                  onChange={(e) => setProp("instagram", e.target.value)}
+                  placeholder="https://instagram.com/..."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Facebook</Label>
+                <Input
+                  value={String(section.facebook ?? "")}
+                  onChange={(e) => setProp("facebook", e.target.value)}
+                  placeholder="https://facebook.com/..."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">LinkedIn</Label>
+                <Input
+                  value={String(section.linkedin ?? "")}
+                  onChange={(e) => setProp("linkedin", e.target.value)}
+                  placeholder="https://linkedin.com/in/..."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Website Oficial</Label>
+                <Input
+                  value={String(section.website ?? "")}
+                  onChange={(e) => setProp("website", e.target.value)}
+                  placeholder="https://suaempresa.com.br"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

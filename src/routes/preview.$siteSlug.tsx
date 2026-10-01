@@ -182,22 +182,22 @@ function renderSection(
           style={{ backgroundColor: theme.isDark ? undefined : primary + "14" }}
         >
           <div className="mx-auto max-w-4xl px-6">
-            {block.badge && (
+            {(block.badge || company?.hero_badge) && (
               <span
                 className={`mb-4 inline-block px-4 py-1 font-mono text-xs font-bold uppercase tracking-widest text-white shadow-sm ${theme.badgeRadius}`}
                 style={{ backgroundColor: primary }}
               >
-                {t(block.badge)}
+                {t(block.badge || company?.hero_badge)}
               </span>
             )}
             <h1
               className={`mt-4 text-4xl sm:text-6xl font-extrabold leading-tight tracking-tight ${theme.headingClass}`}
               style={{ fontFamily: font, color: primary }}
             >
-              {t(block.title ?? site.name)}
+              {t(block.title ?? company?.fantasy_name ?? company?.name ?? site.name)}
             </h1>
             <p className={`mx-auto mt-6 max-w-2xl text-lg ${theme.subheadingClass}`}>
-              {t(block.subtitle ?? "")}
+              {t(block.subtitle ?? company?.hero_subtitle ?? "")}
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               {block.cta_label && (
@@ -484,10 +484,11 @@ function renderSection(
     }
 
     case "contact": {
-      const hasCta = site.phone || site.whatsapp || site.email || block.phone || block.whatsapp || block.email;
-      const displayWpp = block.whatsapp || site.whatsapp;
-      const displayPhone = block.phone || site.phone;
-      const displayEmail = block.email || site.email;
+      const displayWpp = block.whatsapp || company?.whatsapp || site.whatsapp;
+      const displayPhone = block.phone || company?.phone || site.phone;
+      const displayEmail = block.email || company?.email || site.email;
+      const displayAddr = block.address_street || company?.address_street || site.address;
+      const hasCta = displayPhone || displayWpp || displayEmail || displayAddr;
 
       return (
         <section key={idx} id="contato" className={`py-24 ${theme.altSectionBgClass}`}>
@@ -528,10 +529,10 @@ function renderSection(
                   {displayEmail}
                 </a>
               )}
-              {(site.address || site.city || block.address_street) && (
+              {(displayAddr || site.city) && (
                 <span className={`inline-flex items-center gap-2 text-sm ${theme.isDark ? "text-gray-300" : "text-gray-700"}`}>
                   <MapPin className="h-5 w-5" style={{ color: primary }} />
-                  {[block.address_street || site.address, block.address_city || site.city, block.address_state || site.state].filter(Boolean).join(", ")}
+                  {[displayAddr, site.city, site.state].filter(Boolean).join(", ")}
                 </span>
               )}
               {!hasCta && (
@@ -541,28 +542,28 @@ function renderSection(
 
             {/* Social Icons */}
             <div className="flex flex-wrap justify-center gap-3 pt-2">
-              {block.instagram && (
-                <a href={block.instagram} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Instagram">
+              {(block.instagram || company?.instagram) && (
+                <a href={block.instagram || company?.instagram} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Instagram">
                   <Instagram className="h-5 w-5" />
                 </a>
               )}
-              {block.linkedin && (
-                <a href={block.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="LinkedIn">
+              {(block.linkedin || company?.linkedin) && (
+                <a href={block.linkedin || company?.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="LinkedIn">
                   <Linkedin className="h-5 w-5" />
                 </a>
               )}
-              {block.facebook && (
-                <a href={block.facebook} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Facebook">
+              {(block.facebook || company?.facebook) && (
+                <a href={block.facebook || company?.facebook} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Facebook">
                   <Facebook className="h-5 w-5" />
                 </a>
               )}
-              {block.youtube && (
-                <a href={block.youtube} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="YouTube">
+              {(block.youtube || company?.youtube) && (
+                <a href={block.youtube || company?.youtube} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="YouTube">
                   <Youtube className="h-5 w-5" />
                 </a>
               )}
-              {block.website && (
-                <a href={block.website} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Website">
+              {(block.website || company?.website) && (
+                <a href={block.website || company?.website} target="_blank" rel="noopener noreferrer" className="p-3 rounded-full border border-border bg-card hover:text-primary transition-colors" title="Website">
                   <Globe className="h-5 w-5" />
                 </a>
               )}
@@ -784,6 +785,8 @@ function PreviewPage() {
 
   const { data: site, isLoading, error } = useQuery({
     queryKey: ["preview-site", siteSlug],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -806,6 +809,8 @@ function PreviewPage() {
   const { data: pages } = useQuery({
     queryKey: ["preview-pages", site?.id],
     enabled: !!site?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -849,14 +854,6 @@ function PreviewPage() {
   const content = site.content || {};
   const company = (content.company_data as CompanyData) || null;
   const cnpj = company?.cnpj || content?.cnpj;
-  const displayName = company?.name || site.name;
-  const displayWhatsapp = company?.whatsapp || site.whatsapp;
-  const floatingConfig = company?.floating_whatsapp || {
-    enabled: true,
-    phone: displayWhatsapp || "",
-    message: "Olá! Gostaria de saber mais informações sobre os serviços.",
-    label: "Fale Conosco",
-  };
 
   // Flatten all sections from all pages
   const allSections: AnySection[] = [];
@@ -873,6 +870,22 @@ function PreviewPage() {
       allSections.push(...(backupSecs as AnySection[]));
     }
   }
+
+  const heroSec = allSections.find((s) => s.type === "hero");
+  const contactSec = allSections.find((s) => s.type === "contact");
+
+  const displayName = heroSec?.title || company?.fantasy_name || company?.name || site.name;
+  const displayWhatsapp = contactSec?.whatsapp || company?.whatsapp || site.whatsapp;
+  const displayPhone = contactSec?.phone || company?.phone || site.phone;
+  const displayEmail = contactSec?.email || company?.email || site.email;
+  const displayAddress = contactSec?.address_street || company?.address_street || site.address;
+
+  const floatingConfig = company?.floating_whatsapp || {
+    enabled: true,
+    phone: displayWhatsapp || "",
+    message: "Olá! Gostaria de saber mais informações sobre os serviços.",
+    label: "Fale Conosco",
+  };
 
   const activeSections = allSections.filter((s) => s.enabled !== false);
   const hasContent = activeSections.length > 0;

@@ -230,6 +230,130 @@ function EditorPage() {
     []
   );
 
+  // Master sync when sections change (e.g. Hero, Contact edited in SectionFormEditor)
+  const handleChangeSections = useCallback((newSections: AnySection[]) => {
+    setSections(newSections);
+
+    const heroSec = newSections.find((s) => s.type === "hero");
+    const contactSec = newSections.find((s) => s.type === "contact");
+
+    if (heroSec?.title) {
+      setName(heroSec.title);
+    }
+
+    if (contactSec) {
+      if (contactSec.phone !== undefined) setPhone(contactSec.phone);
+      if (contactSec.whatsapp !== undefined) setWhatsapp(contactSec.whatsapp);
+      if (contactSec.email !== undefined) setEmail(contactSec.email);
+      if (contactSec.address_street !== undefined) setAddress(contactSec.address_street);
+    }
+
+    setCompanyData((prev) => {
+      const updated = { ...prev };
+      if (heroSec) {
+        if (heroSec.title) {
+          updated.name = heroSec.title;
+          updated.fantasy_name = heroSec.title;
+        }
+        if (heroSec.subtitle !== undefined) updated.hero_subtitle = heroSec.subtitle;
+        if (heroSec.badge !== undefined) updated.hero_badge = heroSec.badge;
+      }
+      if (contactSec) {
+        if (contactSec.phone !== undefined) updated.phone = contactSec.phone;
+        if (contactSec.whatsapp !== undefined) updated.whatsapp = contactSec.whatsapp;
+        if (contactSec.email !== undefined) updated.email = contactSec.email;
+        if (contactSec.address_street !== undefined) updated.address_street = contactSec.address_street;
+        if (contactSec.instagram !== undefined) updated.instagram = contactSec.instagram;
+        if (contactSec.facebook !== undefined) updated.facebook = contactSec.facebook;
+        if (contactSec.linkedin !== undefined) updated.linkedin = contactSec.linkedin;
+        if (contactSec.website !== undefined) updated.website = contactSec.website;
+      }
+      return updated;
+    });
+  }, []);
+
+  const handleChangeName = useCallback((val: string) => {
+    setName(val);
+    setCompanyData((prev) => ({ ...prev, name: val, fantasy_name: val }));
+    setSections((prev) =>
+      prev.map((s) => (s.type === "hero" ? { ...s, title: val } : s))
+    );
+  }, []);
+
+  const handleChangeBusinessName = useCallback((val: string) => {
+    setBusinessName(val);
+    setCompanyData((prev) => ({ ...prev, legal_name: val }));
+    setSections((prev) =>
+      prev.map((s) => (s.type === "company_info" ? { ...s, legal_name: val } : s))
+    );
+  }, []);
+
+  const handleChangePhone = useCallback((val: string) => {
+    setPhone(val);
+    setCompanyData((prev) => ({ ...prev, phone: val }));
+    setSections((prev) =>
+      prev.map((s) => (s.type === "contact" ? { ...s, phone: val } : s))
+    );
+  }, []);
+
+  const handleChangeWhatsapp = useCallback((val: string) => {
+    setWhatsapp(val);
+    setCompanyData((prev) => ({
+      ...prev,
+      whatsapp: val,
+      floating_whatsapp: prev.floating_whatsapp
+        ? { ...prev.floating_whatsapp, phone: val }
+        : prev.floating_whatsapp,
+    }));
+    setSections((prev) =>
+      prev.map((s) => (s.type === "contact" ? { ...s, whatsapp: val } : s))
+    );
+  }, []);
+
+  const handleChangeEmail = useCallback((val: string) => {
+    setEmail(val);
+    setCompanyData((prev) => ({ ...prev, email: val }));
+    setSections((prev) =>
+      prev.map((s) => (s.type === "contact" ? { ...s, email: val } : s))
+    );
+  }, []);
+
+  const handleChangeCity = useCallback((val: string) => {
+    setCity(val);
+    setCompanyData((prev) => ({ ...prev, address_city: val }));
+    setSections((prev) =>
+      prev.map((s) =>
+        s.type === "location" || s.type === "contact"
+          ? { ...s, address_city: val }
+          : s
+      )
+    );
+  }, []);
+
+  const handleChangeState = useCallback((val: string) => {
+    setState(val);
+    setCompanyData((prev) => ({ ...prev, address_state: val }));
+    setSections((prev) =>
+      prev.map((s) =>
+        s.type === "location" || s.type === "contact"
+          ? { ...s, address_state: val }
+          : s
+      )
+    );
+  }, []);
+
+  const handleChangeAddress = useCallback((val: string) => {
+    setAddress(val);
+    setCompanyData((prev) => ({ ...prev, address_street: val }));
+    setSections((prev) =>
+      prev.map((s) =>
+        s.type === "location" || s.type === "contact"
+          ? { ...s, address_street: val }
+          : s
+      )
+    );
+  }, []);
+
   // Action status
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -395,28 +519,89 @@ function EditorPage() {
         return;
       }
 
+      // Prepare fully unified data across hero, contact, companyData, and top-level site fields
+      const heroSec = sections.find((s) => s.type === "hero");
+      const contactSec = sections.find((s) => s.type === "contact");
+
+      const finalName = (heroSec?.title || name || companyData.name || site.name || "").trim();
+      const finalPhone = (contactSec?.phone || phone || companyData.phone || site.phone || "").trim();
+      const finalWhatsapp = (contactSec?.whatsapp || whatsapp || companyData.whatsapp || site.whatsapp || "").trim();
+      const finalEmail = (contactSec?.email || email || companyData.email || site.email || "").trim();
+      const finalAddress = (contactSec?.address_street || address || companyData.address_street || site.address || "").trim();
+
+      const finalCompanyData: CompanyData = {
+        ...companyData,
+        name: finalName,
+        fantasy_name: finalName,
+        legal_name: businessName.trim() || companyData.legal_name || finalName,
+        phone: finalPhone,
+        whatsapp: finalWhatsapp,
+        email: finalEmail,
+        address_street: finalAddress,
+        address_city: city.trim() || companyData.address_city,
+        address_state: state.trim() || companyData.address_state,
+        hero_badge: heroSec?.badge !== undefined ? heroSec.badge : companyData.hero_badge,
+        hero_subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : companyData.hero_subtitle,
+        floating_whatsapp: {
+          enabled: companyData.floating_whatsapp?.enabled !== false,
+          phone: finalWhatsapp || finalPhone,
+          message: companyData.floating_whatsapp?.message || "Olá! Gostaria de saber mais informações sobre os serviços.",
+          label: companyData.floating_whatsapp?.label || "Fale Conosco",
+        },
+      };
+
+      const finalSections = sections.map((s) => {
+        if (s.type === "hero") {
+          return {
+            ...s,
+            title: finalName,
+            subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : finalCompanyData.hero_subtitle,
+            badge: heroSec?.badge !== undefined ? heroSec.badge : finalCompanyData.hero_badge,
+          };
+        }
+        if (s.type === "contact") {
+          return {
+            ...s,
+            phone: finalPhone,
+            whatsapp: finalWhatsapp,
+            email: finalEmail,
+            address_street: finalAddress,
+          };
+        }
+        return s;
+      });
+
+      // Update state locally so editor stays in sync
+      setName(finalName);
+      setPhone(finalPhone);
+      setWhatsapp(finalWhatsapp);
+      setEmail(finalEmail);
+      setAddress(finalAddress);
+      setCompanyData(finalCompanyData);
+      setSections(finalSections);
+
       // 1. Update site row and persist redundant copy of sections
       const existingContent = (site.content as Record<string, unknown>) || {};
       const { error: siteUpdateError } = await supabase
         .from("sites")
         .update({
-          name: name.trim(),
-          business_name: businessName.trim(),
+          name: finalName,
+          business_name: businessName.trim() || finalName,
           primary_color: primaryColor,
           font_family: fontFamily,
           style: style,
-          phone: phone.trim() || null,
-          whatsapp: whatsapp.trim() || null,
-          email: email.trim() || null,
+          phone: finalPhone || null,
+          whatsapp: finalWhatsapp || null,
+          email: finalEmail || null,
           city: city.trim() || null,
           state: state.trim() || null,
-          address: address.trim() || null,
+          address: finalAddress || null,
           content: {
             ...existingContent,
             cnpj: cnpj.trim() || null,
             facebook_domain_verification: metaVerificationTag.trim() || null,
-            company_data: companyData,
-            sections: sections as any,
+            company_data: finalCompanyData,
+            sections: finalSections as any,
           },
         })
         .eq("id", site.id);
@@ -428,9 +613,9 @@ function EditorPage() {
         const { error: pageUpdateError } = await supabase
           .from("site_pages")
           .update({
-            sections: sections as any,
+            sections: finalSections as any,
             seo: {
-              title: seoTitle.trim(),
+              title: seoTitle.trim() || `${finalName} | Soluções Especializadas`,
               description: seoDescription.trim(),
               facebook_domain_verification: metaVerificationTag.trim() || null,
             },
@@ -447,9 +632,9 @@ function EditorPage() {
             title: "Página inicial",
             path: "/",
             position: 0,
-            sections: sections as any,
+            sections: finalSections as any,
             seo: {
-              title: seoTitle.trim(),
+              title: seoTitle.trim() || `${finalName} | Soluções Especializadas`,
               description: seoDescription.trim(),
               facebook_domain_verification: metaVerificationTag.trim() || null,
             },
@@ -463,6 +648,7 @@ function EditorPage() {
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
       await queryClient.invalidateQueries({ queryKey: ["preview-site", site.slug] });
       await queryClient.invalidateQueries({ queryKey: ["preview-pages", site.id] });
+      await queryClient.invalidateQueries({ queryKey: ["public-site", site.slug] });
 
       toast.success("Alterações salvas com sucesso! ✨");
     } catch (e: unknown) {
@@ -574,7 +760,7 @@ function EditorPage() {
       <div className="flex-1 flex overflow-hidden">
         <EditorSidebar
           sections={sections}
-          onChangeSections={setSections}
+          onChangeSections={handleChangeSections}
           selectedSectionIndex={selectedSectionIndex}
           onSelectSection={setSelectedSectionIndex}
           // Theme
@@ -586,23 +772,23 @@ function EditorPage() {
           onChangeStyle={setStyle}
           // Contact
           name={name}
-          onChangeName={setName}
+          onChangeName={handleChangeName}
           businessName={businessName}
-          onChangeBusinessName={setBusinessName}
+          onChangeBusinessName={handleChangeBusinessName}
           cnpj={cnpj}
           onChangeCnpj={setCnpj}
           whatsapp={whatsapp}
-          onChangeWhatsapp={setWhatsapp}
+          onChangeWhatsapp={handleChangeWhatsapp}
           phone={phone}
-          onChangePhone={setPhone}
+          onChangePhone={handleChangePhone}
           email={email}
-          onChangeEmail={setEmail}
+          onChangeEmail={handleChangeEmail}
           city={city}
-          onChangeCity={setCity}
+          onChangeCity={handleChangeCity}
           state={state}
-          onChangeState={setState}
+          onChangeState={handleChangeState}
           address={address}
-          onChangeAddress={setAddress}
+          onChangeAddress={handleChangeAddress}
           // SEO
           seoTitle={seoTitle}
           onChangeSeoTitle={setSeoTitle}
