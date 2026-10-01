@@ -74,7 +74,8 @@ interface CnpjResult {
     data_inicio_atividade?: string | null;
     cidade: { nome: string } | null;
     estado: { sigla: string } | null;
-    atividade_principal: { descricao: string } | null;
+    atividade_principal: { id?: string; subclasse?: string; descricao: string } | null;
+    atividades_secundarias?: Array<{ id?: string; subclasse?: string; descricao: string }>;
     situacao_cadastral: string;
     tipo?: string | null;
   };
@@ -232,24 +233,55 @@ export function CreateSiteWizard({
       const zip = json.estabelecimento?.cep || "";
 
       // Enrich with IBGE CNAE descriptors & scope of activities
-      const cnaeId = json.estabelecimento.atividade_principal?.id;
+      // cnaeId can come from atividade_principal.id or be extracted from description (e.g. "43.22-3-01 - INSTALAÇÕES...")
+      let cnaeId = json.estabelecimento.atividade_principal?.id || json.estabelecimento.atividade_principal?.subclasse;
+      if (!cnaeId && cnaeDesc) {
+        // Try to extract CNAE code from the description like "43.22-3-01 - Descrição"
+        const cnaeMatch = cnaeDesc.match(/^(\d{2}\.\d{2}-\d-\d{2})/);
+        if (cnaeMatch) cnaeId = cnaeMatch[1].replace(/\D/g, "");
+      }
+
       let cnaeDetails: any = null;
       if (cnaeId) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          const timeoutId = setTimeout(() => controller.abort(), 4500);
           const ibgeRes = await fetch(`https://servicodados.ibge.gov.br/api/v2/cnae/subclasses/${cnaeId}`, {
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
           if (ibgeRes.ok) {
             const ibgeJson = await ibgeRes.json();
+
+            // Collect atividades from subclasse (direct descriptors)
+            const atividadesSubclasse: string[] = Array.isArray(ibgeJson.atividades) ? ibgeJson.atividades : [];
+
+            // Collect observacoes from the subclasse level (specific scope)
+            const observacoesSubclasse: string[] = Array.isArray(ibgeJson.observacoes)
+              ? ibgeJson.observacoes
+              : [];
+
+            // Collect observacoes from the classe level (broader scope, often more complete)
+            const observacoesClasse: string[] = Array.isArray(ibgeJson.classe?.observacoes)
+              ? ibgeJson.classe.observacoes
+              : [];
+
+            // Merge: prefer classe observacoes as they're more detailed, then subclasse
+            const allObservacoes = [...observacoesClasse, ...observacoesSubclasse].filter(Boolean);
+
+            // Secondary activities descriptions
+            const secundarias = (json.estabelecimento.atividades_secundarias || [])
+              .map((a: any) => a.descricao)
+              .filter(Boolean);
+
             cnaeDetails = {
               cnae_code: json.estabelecimento.atividade_principal?.subclasse || cnaeId,
               cnae_descricao: ibgeJson.descricao || cnaeDesc,
-              compreende: Array.isArray(ibgeJson.observacoes) ? ibgeJson.observacoes : [],
-              descritores: Array.isArray(ibgeJson.atividades) ? ibgeJson.atividades : [],
-              secundarias: (json.estabelecimento.atividades_secundarias || []).map((a: any) => a.descricao).filter(Boolean),
+              // 'atividades' are the official CNAE descriptor strings — use as service references
+              descritores: atividadesSubclasse,
+              // 'observacoes' describe what the activity includes/excludes
+              compreende: allObservacoes,
+              secundarias,
             };
           }
         } catch (ibgeErr) {

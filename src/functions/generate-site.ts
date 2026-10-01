@@ -276,59 +276,81 @@ export const generateSite = createServerFn({ method: "POST" })
 
       if (GEMINI_KEY) {
         try {
+          // Build rich CNAE context block from official IBGE descriptors
           const cnaeDetails = input.cnae_details || (input.company_data as any)?.cnae_details;
-          const cnaeDescriptors = Array.isArray(cnaeDetails?.descritores) && cnaeDetails.descritores.length > 0
-            ? `\n- Descritores oficiais de serviços desta atividade (IBGE): ${cnaeDetails.descritores.slice(0, 15).join("; ")}`
+
+          // Official CNAE activity descriptors — these ARE the services this business is authorized to provide
+          const atividadesCnae = Array.isArray(cnaeDetails?.descritores) && cnaeDetails.descritores.length > 0
+            ? cnaeDetails.descritores
+            : [];
+
+          // The scope definition from IBGE (what the CNAE includes)
+          const observacoesCnae = Array.isArray(cnaeDetails?.compreende) && cnaeDetails.compreende.length > 0
+            ? cnaeDetails.compreende
+            : [];
+
+          // Secondary registered activities
+          const secundariasCnae = Array.isArray(cnaeDetails?.secundarias) && cnaeDetails.secundarias.length > 0
+            ? cnaeDetails.secundarias
+            : [];
+
+          const cnaeAtividadesBlock = atividadesCnae.length > 0
+            ? `\n\nATIVIDADES CNAE OFICIAIS (IBGE) — USE COMO REFERÊNCIA DIRETA PARA OS SERVIÇOS:\n${atividadesCnae.map((a: string) => `  • ${a}`).join("\n")}`
             : "";
-          const cnaeCompreende = Array.isArray(cnaeDetails?.compreende) && cnaeDetails.compreende.length > 0
-            ? `\n- O que esta atividade compreende: ${cnaeDetails.compreende.slice(0, 3).join(" ")}`
+
+          const cnaeEscopoBlock = observacoesCnae.length > 0
+            ? `\n\nESCOPO DA ATIVIDADE (O QUE O CNAE COMPREENDE):\n${observacoesCnae.map((o: string) => `  ${o.replace(/\r\n#?/g, "\n  ")}`).join("\n\n")}`
             : "";
-          const cnaeSecundarias = Array.isArray(cnaeDetails?.secundarias) && cnaeDetails.secundarias.length > 0
-            ? `\n- Atividades secundárias cadastradas: ${cnaeDetails.secundarias.slice(0, 5).join("; ")}`
+
+          const cnaeSecundariasBlock = secundariasCnae.length > 0
+            ? `\n\nATIVIDADES SECUNDÁRIAS CADASTRADAS:\n${secundariasCnae.map((s: string) => `  • ${s}`).join("\n")}`
             : "";
 
           const instPrompt = `Você é um diretor de criação e copywriter corporativo brasileiro de altíssimo nível.
-Gere conteúdo institucional (Hero, Missão, Quem Somos) e o catálogo de serviços especializados ("Soluções Especializadas") para a seguinte empresa, baseado ESTRITAMENTE no nicho real deste CNPJ:
+Gere conteúdo institucional completo para a seguinte empresa, baseado ESTRITAMENTE nas atividades CNAE oficiais abaixo.
 
 DADOS DA EMPRESA:
 - Nome Fantasia / Marca: ${finalCompanyData.name}
 - Razão Social: ${finalCompanyData.legal_name}
 ${finalCompanyData.cnpj ? `- CNPJ: ${finalCompanyData.cnpj}` : ""}
-- Ramo de Atuação / Atividade Principal (CNAE): ${finalCompanyData.activity_area}${cnaeDescriptors}${cnaeCompreende}${cnaeSecundarias}
+- Atividade Principal (CNAE ${cnaeDetails?.cnae_code || ""}): ${finalCompanyData.activity_area}
 ${finalCompanyData.address_city ? `- Cidade/UF: ${finalCompanyData.address_city}/${finalCompanyData.address_state}` : ""}
 ${input.goal ? `- Objetivo: ${input.goal}` : ""}
+${cnaeAtividadesBlock}${cnaeEscopoBlock}${cnaeSecundariasBlock}
 
 REGRAS OBRIGATÓRIAS:
-1. RECONHECIMENTO ABSOLUTO DO NICHO: Baseie-se DIRETAMENTE nas atividades e descritores acima. O site DEVE refletir 100% o que a empresa realmente faz ou comercializa (ex: se for refrigeração/ar condicionado, fale de climatização central, dutos, PMOC e refrigeração; se for vestuário/confecção, fale de peças, tecidos e moda; se for bijuterias, fale de semijoias e design; se for agricultura, fale de cultivo e produção rural).
-2. NUNCA use termos genéricos como "assessoria empresarial" ou "consultoria estratégica" a menos que a empresa seja de fato de consultoria.
-3. Crie uma Missão inspiradora, ética e tecnicamente conectada ao setor da empresa (2-3 frases).
-4. Crie 3 pilares da missão ("pillars") específicos e técnicos do nicho (cada um com "title" e "description").
-5. Crie o texto de Quem Somos ("about_body") com 3 a 5 frases ricas, destacando excelência operacional, rigor de execução e atuação local/regional na cidade de ${finalCompanyData.address_city || "sua região"}.
-6. Em "services" ("Soluções Especializadas"), gere entre 4 e 6 serviços/produtos altamente específicos desse nicho, detalhando o que é feito, benefícios para o cliente, categoria e ícone Lucide apropriado (ex: Wind, ShieldCheck, Wrench, RefreshCw, Scissors, Sparkles, Truck, Package, Hammer, Cpu, Zap, ShoppingBag, Heart, Coffee, Utensils).
-7. Retorne APENAS um JSON válido.
+1. RECONHECIMENTO ABSOLUTO DO NICHO: As "Atividades CNAE Oficiais" acima são as referências de serviços que esta empresa REALMENTE presta. Use-as diretamente para nomear e descrever os serviços no site.
+2. NUNCA invente serviços genéricos como "assessoria empresarial" ou "consultoria estratégica" a menos que o CNAE seja efetivamente de consultoria.
+3. Os serviços gerados devem ser baseados nas "Atividades CNAE Oficiais" listadas — transforme-as em serviços com nomes comerciais atrativos.
+4. O "Escopo da Atividade" define O QUE ESTA EMPRESA FAZ — use para escrever a Missão e o Quem Somos com precisão técnica.
+5. Crie uma Missão inspiradora (2-3 frases) com termos técnicos do setor (ex: se for instalação hidráulica: "tubulações", "redes de gás", "sistemas de aquecimento solar"; se for refrigeração: "climatização central", "PMOC", "câmaras frigoríficas").
+6. Crie 3 pilares da missão específicos e técnicos do nicho.
+7. Crie o texto de Quem Somos (3-4 frases) mencionando especialização técnica, conformidade com normas e atuação em ${finalCompanyData.address_city || "sua região"}.
+8. Em "services", gere entre 4 e 6 serviços baseados nas "Atividades CNAE Oficiais", com nomes comerciais atrativos, descrições persuasivas e ícone Lucide adequado (ex: Wrench, Droplets, Wind, Flame, ShieldCheck, Thermometer, Cpu, Zap, Package, Hammer, Scissors, Truck, RefreshCw, Wifi, Settings).
+9. Retorne APENAS um JSON válido, sem markdown.
 
 FORMATO JSON ESPERADO:
 {
-  "hero_badge": "Frase de destaque do nicho (3 a 5 palavras)",
-  "hero_subtitle": "Subtítulo explicando o que a empresa faz com proposta de valor forte (1-2 frases)",
+  "hero_badge": "Frase de destaque técnica do nicho (3 a 5 palavras)",
+  "hero_subtitle": "Subtítulo explicando o que a empresa faz com proposta de valor forte e técnica (1-2 frases)",
   "mission_title": "Nossa Missão",
-  "mission_description": "Texto da missão focado no nicho de atuação e compromisso com o cliente (2-3 frases)",
+  "mission_description": "Texto da missão com termos técnicos do setor. Focado no que o CNAE compreende. (2-3 frases)",
   "pillars": [
-    { "title": "Pilar 1", "description": "Descrição do pilar 1 conectada à qualidade do nicho" },
-    { "title": "Pilar 2", "description": "Descrição do pilar 2 conectada à conformidade e precisão" },
-    { "title": "Pilar 3", "description": "Descrição do pilar 3 conectada ao atendimento e pontualidade" }
+    { "title": "Pilar técnico 1 do nicho", "description": "Descrição conectada à qualidade e precisão do setor" },
+    { "title": "Pilar técnico 2 do nicho", "description": "Conformidade com normas técnicas e regulatórias" },
+    { "title": "Pilar técnico 3 do nicho", "description": "Atendimento especializado e pontualidade" }
   ],
   "about_title": "Sobre a ${finalCompanyData.name}",
-  "about_body": "Texto de quem somos destacando especialização, dedicação e qualidade no nicho (3-4 frases)",
-  "about_highlight": "Frase de autoridade no nicho",
+  "about_body": "Texto de quem somos destacando especialização técnica, conformidade normativa e qualidade no nicho (3-4 frases)",
+  "about_highlight": "Frase de autoridade técnica no nicho",
   "services_title": "Nossas Soluções Especializadas",
-  "services_subtitle": "Serviços técnicos e soluções planejadas para garantir eficiência e continuidade do seu negócio.",
+  "services_subtitle": "Serviços técnicos baseados nas atividades CNAE desta empresa, planejados com rigor e excelência.",
   "services": [
     {
-      "name": "Nome do Serviço 1 no nicho",
-      "description": "Descrição clara e persuasiva do serviço ou produto",
-      "icon": "IconeLucide",
-      "category": "Categoria ou badge"
+      "name": "Nome comercial atrativo do serviço (baseado em uma das Atividades CNAE)",
+      "description": "Descrição clara, técnica e persuasiva do serviço, benefícios para o cliente",
+      "icon": "IconeLucideAdequado",
+      "category": "Categoria ou badge técnico"
     }
   ]
 }`;
