@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Layout, Palette, PhoneCall, Search, Building2, ShieldCheck } from "lucide-react";
 import type { AnySection } from "./AddSectionModal";
