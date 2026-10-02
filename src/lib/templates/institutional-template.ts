@@ -229,6 +229,27 @@ export const INITIAL_COMPANY_DATA: CompanyData = {
 };
 
 /**
+ * Formata CNPJ para exibição visual padronizada (ex: "CNPJ: 28.352.213/0001-00")
+ */
+export function formatCnpjDisplay(raw?: string | null): string {
+  if (!raw) return "";
+  const trimmed = String(raw).trim();
+  if (!trimmed) return "";
+  const digitsOnly = trimmed.replace(/\D/g, "");
+  if (digitsOnly.length === 14) {
+    const formatted = digitsOnly.replace(
+      /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+      "$1.$2.$3/$4-$5"
+    );
+    return `CNPJ: ${formatted}`;
+  }
+  if (/^cnpj/i.test(trimmed)) {
+    return trimmed;
+  }
+  return `CNPJ: ${trimmed}`;
+}
+
+/**
  * Resolução dinâmica de variáveis {{company.*}}
  */
 export function resolveCompanyVariables(text: string, data: Partial<CompanyData>): string {

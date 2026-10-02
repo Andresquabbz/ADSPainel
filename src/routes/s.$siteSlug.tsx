@@ -34,7 +34,7 @@ import type { AnySection } from "@/components/editor/AddSectionModal";
 import { getVisualStyle, type VisualStyle } from "@/lib/visual-styles";
 import { subdomainFor } from "@/config/app";
 import type { CompanyData } from "@/lib/templates/institutional-template";
-import { resolveCompanyVariables } from "@/lib/templates/institutional-template";
+import { resolveCompanyVariables, formatCnpjDisplay } from "@/lib/templates/institutional-template";
 
 function extractMetaVerification(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -588,9 +588,11 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             section.type === "hero"
               ? {
                   ...section,
-                  title: displayName,
+                  title: heroSec?.title || displayName,
                   subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : section.subtitle,
                   badge: heroSec?.badge !== undefined ? heroSec.badge : section.badge,
+                  cnpj: heroSec?.cnpj !== undefined ? heroSec.cnpj : section.cnpj,
+                  show_cnpj: heroSec?.show_cnpj !== undefined ? heroSec.show_cnpj : section.show_cnpj,
                 }
               : section.type === "contact"
               ? {
@@ -623,6 +625,7 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
               businessName={company?.legal_name || site.business_name || displayName}
               theme={theme}
               companyData={mergedCompanyData}
+              cnpj={cnpj || ""}
             />
           );
         })}
@@ -735,6 +738,7 @@ interface SectionRendererProps {
   businessName: string;
   theme: VisualStyle;
   companyData?: CompanyData | null;
+  cnpj?: string;
 }
 
 function PublicSectionRenderer({
@@ -750,6 +754,7 @@ function PublicSectionRenderer({
   businessName,
   theme,
   companyData,
+  cnpj,
 }: SectionRendererProps) {
   function t(text: string | unknown) {
     if (typeof text !== "string") return "";
@@ -758,7 +763,9 @@ function PublicSectionRenderer({
 
   switch (s.type) {
     // ── HERO ──
-    case "hero":
+    case "hero": {
+      const heroCnpj = (s.cnpj as string | undefined) || companyData?.cnpj || cnpj;
+      const displayHeroCnpj = s.show_cnpj !== false && heroCnpj ? formatCnpjDisplay(heroCnpj) : null;
       return (
         <section
           className={`py-24 px-6 text-center ${theme.heroBgClass}`}
@@ -774,10 +781,15 @@ function PublicSectionRenderer({
               </span>
             )}
             <h1
-              className={`text-4xl sm:text-6xl ${theme.headingClass} leading-tight font-extrabold`}
+              className={`text-4xl sm:text-6xl ${theme.headingClass} leading-tight font-extrabold flex flex-col items-center gap-1 sm:gap-2`}
               style={{ color: primary }}
             >
-              {t(s.title || companyData?.fantasy_name || companyData?.name || businessName)}
+              <span>{t(s.title || companyData?.fantasy_name || companyData?.name || businessName)}</span>
+              {displayHeroCnpj && (
+                <span className="text-3xl sm:text-5xl font-extrabold tracking-tight">
+                  {displayHeroCnpj}
+                </span>
+              )}
             </h1>
             <p className={`text-lg sm:text-xl ${theme.subheadingClass} max-w-2xl mx-auto leading-relaxed`}>
               {t(s.subtitle || companyData?.hero_subtitle || "Soluções completas com qualidade, credibilidade e transparência.")}
@@ -817,6 +829,7 @@ function PublicSectionRenderer({
           </div>
         </section>
       );
+    }
 
     // ── MISSION ──
     case "mission": {

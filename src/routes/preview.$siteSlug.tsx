@@ -33,7 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { subdomainFor } from "@/config/app";
 import { getVisualStyle, type VisualStyle } from "@/lib/visual-styles";
 import type { CompanyData } from "@/lib/templates/institutional-template";
-import { resolveCompanyVariables } from "@/lib/templates/institutional-template";
+import { resolveCompanyVariables, formatCnpjDisplay } from "@/lib/templates/institutional-template";
 
 function extractMetaVerification(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -174,32 +174,39 @@ function renderSection(
   }
 
   switch (block.type) {
-    case "hero":
+    case "hero": {
+      const heroCnpj = (block.cnpj as string | undefined) || company?.cnpj || (site.content as any)?.cnpj;
+      const displayHeroCnpj = block.show_cnpj !== false && heroCnpj ? formatCnpjDisplay(heroCnpj) : null;
       return (
         <section
           key={idx}
           className={`relative overflow-hidden py-24 text-center ${theme.heroBgClass}`}
           style={{ backgroundColor: theme.isDark ? undefined : primary + "14" }}
         >
-          <div className="mx-auto max-w-4xl px-6">
+          <div className="mx-auto max-w-4xl px-6 space-y-6">
             {(block.badge || company?.hero_badge) && (
               <span
-                className={`mb-4 inline-block px-4 py-1 font-mono text-xs font-bold uppercase tracking-widest text-white shadow-sm ${theme.badgeRadius}`}
+                className={`inline-block px-4 py-1 font-mono text-xs font-bold uppercase tracking-widest text-white shadow-sm ${theme.badgeRadius}`}
                 style={{ backgroundColor: primary }}
               >
                 {t(block.badge || company?.hero_badge)}
               </span>
             )}
             <h1
-              className={`mt-4 text-4xl sm:text-6xl font-extrabold leading-tight tracking-tight ${theme.headingClass}`}
+              className={`text-4xl sm:text-6xl font-extrabold leading-tight tracking-tight flex flex-col items-center gap-1 sm:gap-2 ${theme.headingClass}`}
               style={{ fontFamily: font, color: primary }}
             >
-              {t(block.title ?? company?.fantasy_name ?? company?.name ?? site.name)}
+              <span>{t(block.title ?? company?.fantasy_name ?? company?.name ?? site.name)}</span>
+              {displayHeroCnpj && (
+                <span className="text-3xl sm:text-5xl font-extrabold tracking-tight">
+                  {displayHeroCnpj}
+                </span>
+              )}
             </h1>
-            <p className={`mx-auto mt-6 max-w-2xl text-lg ${theme.subheadingClass}`}>
+            <p className={`mx-auto max-w-2xl text-lg ${theme.subheadingClass}`}>
               {t(block.subtitle ?? company?.hero_subtitle ?? "")}
             </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <div className="pt-2 flex flex-wrap justify-center gap-3">
               {block.cta_label && (
                 <a
                   href={String(block.cta_href ?? "#contato")}
@@ -233,6 +240,7 @@ function renderSection(
           </div>
         </section>
       );
+    }
 
     case "mission": {
       const pillars = (block.pillars as { title: string; description: string }[]) || [];

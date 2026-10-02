@@ -79,6 +79,32 @@ export function SectionFormEditor({ section, onChange, onBack }: SectionFormEdit
           </div>
 
           <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="label-mono text-muted-foreground">CNPJ no Destaque (Abaixo do Título)</Label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={section.show_cnpj !== false}
+                  onChange={(e) => setProp("show_cnpj", e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                />
+                Exibir no Hero
+              </label>
+            </div>
+            {section.show_cnpj !== false && (
+              <Input
+                value={String(section.cnpj ?? "")}
+                onChange={(e) => setProp("cnpj", e.target.value)}
+                placeholder="Ex: 28.352.213/0001-00 (ou deixe em branco para usar o cadastrado)"
+                className="font-mono text-sm"
+              />
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Aparece em destaque grande logo abaixo do título no cabeçalho do site.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
             <Label className="label-mono text-muted-foreground">Subtítulo / Proposta de Valor</Label>
             <Textarea
               value={String(section.subtitle ?? "")}

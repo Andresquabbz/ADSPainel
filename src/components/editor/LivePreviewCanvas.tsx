@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { getVisualStyle, type VisualStyle } from "@/lib/visual-styles";
 import type { CompanyData } from "@/lib/templates/institutional-template";
-import { resolveCompanyVariables } from "@/lib/templates/institutional-template";
+import { resolveCompanyVariables, formatCnpjDisplay } from "@/lib/templates/institutional-template";
 
 function isRealLink(url?: string | null): boolean {
   if (!url || typeof url !== "string") return false;
@@ -249,6 +249,7 @@ export function LivePreviewCanvas({
                   theme,
                   name: displayName,
                   businessName: companyData?.legal_name || businessName || displayName,
+                  cnpj: companyData?.cnpj || cnpj,
                   whatsapp: displayWhatsapp,
                   phone: companyData?.phone || phone,
                   email: companyData?.email || email,
@@ -342,6 +343,7 @@ interface RenderContext {
   state: string;
   address: string;
   companyData?: CompanyData;
+  cnpj?: string;
 }
 
 function renderSectionContent(s: AnySection, ctx: RenderContext) {
@@ -356,7 +358,9 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
 
   switch (s.type) {
     // ── 1. HERO ─────────────────────────────────────────────────────────────
-    case "hero":
+    case "hero": {
+      const heroCnpj = (s.cnpj as string | undefined) || company?.cnpj || ctx.cnpj;
+      const displayHeroCnpj = s.show_cnpj !== false && heroCnpj ? formatCnpjDisplay(heroCnpj) : null;
       return (
         <section
           className={`py-20 px-6 text-center ${theme.heroBgClass}`}
@@ -372,10 +376,15 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
               </span>
             )}
             <h1
-              className={`text-4xl sm:text-5xl ${theme.headingClass} leading-tight font-extrabold`}
+              className={`text-4xl sm:text-5xl ${theme.headingClass} leading-tight font-extrabold flex flex-col items-center gap-1 sm:gap-2`}
               style={{ color: primary }}
             >
-              {t(s.title || company?.fantasy_name || company?.name || ctx.name)}
+              <span>{t(s.title || company?.fantasy_name || company?.name || ctx.name)}</span>
+              {displayHeroCnpj && (
+                <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                  {displayHeroCnpj}
+                </span>
+              )}
             </h1>
             <p className={`text-base sm:text-lg ${theme.subheadingClass} max-w-xl mx-auto leading-relaxed`}>
               {t(s.subtitle || company?.hero_subtitle || "Soluções corporativas completas com alta qualidade e excelência.")}
@@ -415,6 +424,7 @@ function renderSectionContent(s: AnySection, ctx: RenderContext) {
           </div>
         </section>
       );
+    }
 
     // ── 2. MISSION / NOSSA MISSÃO ───────────────────────────────────────────
     case "mission": {
