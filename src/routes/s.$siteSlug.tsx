@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { getPublicSite } from "@/functions/get-public-site";
 import { PublicContactForm } from "@/components/public/PublicContactForm";
 import {
@@ -157,10 +158,83 @@ function PublicSitePage() {
 export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; initialData?: any }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["public-site", siteSlug],
-    queryFn: () => getPublicSite({ data: siteSlug }),
+    queryFn: async () => {
+      // 1. Fetch fresh data directly from Supabase to bypass any server/edge caching
+      try {
+        const { data: siteBySlug } = await supabase
+          .from("sites")
+          .select("*")
+          .eq("slug", siteSlug)
+          .maybeSingle();
+
+        let site = siteBySlug;
+
+        // If not found by slug directly, check custom domain
+        if (!site) {
+          const cleanDom = siteSlug.toLowerCase().trim();
+          const withWww = cleanDom.startsWith("www.") ? cleanDom : `www.${cleanDom}`;
+          const withoutWww = cleanDom.replace(/^www\./, "");
+
+          const { data: domRecord } = await supabase
+            .from("domains")
+            .select("site_id")
+            .or(`domain.eq.${cleanDom},domain.eq.${withWww},domain.eq.${withoutWww}`)
+            .maybeSingle();
+
+          if (domRecord?.site_id) {
+            const { data: foundSite } = await supabase
+              .from("sites")
+              .select("*")
+              .eq("id", domRecord.site_id)
+              .maybeSingle();
+            if (foundSite) site = foundSite;
+          }
+        }
+
+        if (site) {
+          const { data: pages } = await supabase
+            .from("site_pages")
+            .select("id, title, path, sections, seo, position")
+            .eq("site_id", site.id)
+            .order("position");
+
+          let finalPages = pages || [];
+          const hasAnySection = finalPages.some(
+            (p) => Array.isArray(p.sections) && p.sections.length > 0
+          );
+          if (!hasAnySection && site) {
+            const backupSections = (site.content as Record<string, unknown>)?.["sections"];
+            if (Array.isArray(backupSections) && backupSections.length > 0) {
+              finalPages = [
+                {
+                  id: "default-page",
+                  title: "Página inicial",
+                  path: "/",
+                  position: 0,
+                  sections: backupSections,
+                  seo: (site.seo as Record<string, unknown>) || {},
+                } as any,
+              ];
+            }
+          }
+
+          return {
+            site,
+            pages: finalPages,
+            isPublished: site.status === "published",
+          };
+        }
+      } catch (err) {
+        console.warn("[PublicSiteView] Direct Supabase fetch error, fallback to serverFn:", err);
+      }
+
+      return getPublicSite({ data: siteSlug });
+    },
     initialData,
+    initialDataUpdatedAt: 0,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -221,8 +295,8 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
     }
   }
 
-  const heroSec = allSections.find((s) => s.type === "hero");
-  const contactSec = allSections.find((s) => s.type === "contact");
+  const heroSec = allSections.find((s) => s.type === "hero") || (content?.sections as AnySection[] | undefined)?.find((s) => s.type === "hero");
+  const contactSec = allSections.find((s) => s.type === "contact") || (content?.sections as AnySection[] | undefined)?.find((s) => s.type === "contact");
 
   const displayName = heroSec?.title || company?.fantasy_name || company?.name || site.name;
   const displayWhatsapp = contactSec?.whatsapp || company?.whatsapp || site.whatsapp;
@@ -384,6 +458,21 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
     ].filter((u): u is string => isRealLink(u)),
   };
 
+  const mergedCompanyData = company
+    ? {
+        ...company,
+        name: displayName,
+        fantasy_name: displayName,
+        legal_name: company.legal_name || site.business_name || displayName,
+        phone: displayPhone || company.phone,
+        whatsapp: displayWhatsapp || company.whatsapp,
+        email: displayEmail || company.email,
+        address_street: displayAddress || company.address_street,
+        hero_badge: heroSec?.badge !== undefined ? heroSec.badge : company.hero_badge,
+        hero_subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : company.hero_subtitle,
+      }
+    : null;
+
   return (
     <div
       className={`min-h-screen flex flex-col relative ${theme.wrapperClass}`}
@@ -491,25 +580,52 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
         )}
       </header>
 
+
       {/* ── Sections ── */}
       <main className="flex-1">
-        {activeSections.map((section, idx) => (
-          <PublicSectionRenderer
-            key={idx}
-            section={section}
-            siteId={site.id}
-            primaryColor={primary}
-            whatsapp={displayWhatsapp || ""}
-            phone={company?.phone || site.phone || ""}
-            email={company?.email || site.email || ""}
-            city={company?.address_city || site.city || ""}
-            state={company?.address_state || site.state || ""}
-            address={company?.address_street ? `${company.address_street}, ${company.address_number || ""}` : site.address || ""}
-            businessName={company?.legal_name || site.business_name || displayName}
-            theme={theme}
-            companyData={company}
-          />
-        ))}
+        {activeSections.map((section, idx) => {
+          const mergedSection =
+            section.type === "hero"
+              ? {
+                  ...section,
+                  title: displayName,
+                  subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : section.subtitle,
+                  badge: heroSec?.badge !== undefined ? heroSec.badge : section.badge,
+                }
+              : section.type === "contact"
+              ? {
+                  ...section,
+                  phone: displayPhone,
+                  whatsapp: displayWhatsapp,
+                  email: displayEmail,
+                  address_street: displayAddress,
+                  title: contactSec?.title !== undefined ? contactSec.title : section.title,
+                  subtitle: contactSec?.subtitle !== undefined ? contactSec.subtitle : section.subtitle,
+                  instagram: contactSec?.instagram !== undefined ? contactSec.instagram : section.instagram,
+                  facebook: contactSec?.facebook !== undefined ? contactSec.facebook : section.facebook,
+                  linkedin: contactSec?.linkedin !== undefined ? contactSec.linkedin : section.linkedin,
+                  website: contactSec?.website !== undefined ? contactSec.website : section.website,
+                }
+              : section;
+
+          return (
+            <PublicSectionRenderer
+              key={idx}
+              section={mergedSection}
+              siteId={site.id}
+              primaryColor={primary}
+              whatsapp={displayWhatsapp || ""}
+              phone={displayPhone || ""}
+              email={displayEmail || ""}
+              city={company?.address_city || site.city || ""}
+              state={company?.address_state || site.state || ""}
+              address={displayAddress || ""}
+              businessName={company?.legal_name || site.business_name || displayName}
+              theme={theme}
+              companyData={mergedCompanyData}
+            />
+          );
+        })}
 
         {!activeSections.some((s) => s.type === "privacy_policy" || s.type === "privacy") && (
           <PublicSectionRenderer
@@ -527,14 +643,14 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             siteId={site.id}
             primaryColor={primary}
             whatsapp={displayWhatsapp || ""}
-            phone={company?.phone || site.phone || ""}
-            email={company?.email || site.email || ""}
+            phone={displayPhone || ""}
+            email={displayEmail || ""}
             city={company?.address_city || site.city || ""}
             state={company?.address_state || site.state || ""}
-            address={site.address || ""}
+            address={displayAddress || ""}
             businessName={company?.legal_name || site.business_name || displayName}
             theme={theme}
-            companyData={company}
+            companyData={mergedCompanyData}
           />
         )}
       </main>
@@ -567,9 +683,9 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             {company?.legal_name || site.business_name || displayName}
           </p>
 
-          {(company?.address_city || site.city || site.state) && (
+          {(displayAddress || company?.address_street || company?.address_city || site.city || site.state) && (
             <p>
-              {[company?.address_street, company?.address_city || site.city, company?.address_state || site.state]
+              {[displayAddress || company?.address_street, company?.address_city || site.city, company?.address_state || site.state]
                 .filter(Boolean)
                 .join(" — ")}
             </p>
@@ -581,10 +697,10 @@ export function PublicSiteView({ siteSlug, initialData }: { siteSlug: string; in
             </p>
           )}
 
-          {(company?.email || site.email) && (
+          {(displayEmail || company?.email || site.email) && (
             <p>
-              <a href={`mailto:${company?.email || site.email}`} className="hover:underline">
-                {company?.email || site.email}
+              <a href={`mailto:${displayEmail || company?.email || site.email}`} className="hover:underline">
+                {displayEmail || company?.email || site.email}
               </a>
             </p>
           )}

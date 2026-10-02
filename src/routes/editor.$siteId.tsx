@@ -455,6 +455,7 @@ function EditorPage() {
   }, [user, authLoading, navigate]);
 
   // ── 4. Unsaved changes detection ─────────────────────────────────────────
+  // ── 4. Unsaved changes detection ─────────────────────────────────────────
   const hasUnsavedChanges = useMemo(() => {
     if (!site || !isInitialized) return false;
 
@@ -465,8 +466,14 @@ function EditorPage() {
     const sectionsChanged =
       JSON.stringify(sections) !== JSON.stringify(originalSections);
 
+    const originalCompanyData = (site.content as Record<string, unknown>)?.["company_data"];
+    const companyDataChanged =
+      !!originalCompanyData &&
+      JSON.stringify(companyData) !== JSON.stringify(originalCompanyData);
+
     return (
       sectionsChanged ||
+      companyDataChanged ||
       name !== (site.name || "") ||
       businessName !== (site.business_name || "") ||
       cnpj !== (site.content?.cnpj || "") ||
@@ -491,6 +498,7 @@ function EditorPage() {
     page,
     isInitialized,
     sections,
+    companyData,
     name,
     businessName,
     cnpj,
@@ -509,154 +517,205 @@ function EditorPage() {
   ]);
 
   // ── 5. Save action ───────────────────────────────────────────────────────
-  async function handleSave() {
-    if (!site) return;
-    setIsSaving(true);
-    try {
-      if (sections.length === 0) {
-        toast.error("O site precisa ter pelo menos uma seção.");
-        setIsSaving(false);
-        return;
-      }
-
-      // Prepare fully unified data across hero, contact, companyData, and top-level site fields
-      const heroSec = sections.find((s) => s.type === "hero");
-      const contactSec = sections.find((s) => s.type === "contact");
-
-      const finalName = (heroSec?.title || name || companyData.name || site.name || "").trim();
-      const finalPhone = (contactSec?.phone || phone || companyData.phone || site.phone || "").trim();
-      const finalWhatsapp = (contactSec?.whatsapp || whatsapp || companyData.whatsapp || site.whatsapp || "").trim();
-      const finalEmail = (contactSec?.email || email || companyData.email || site.email || "").trim();
-      const finalAddress = (contactSec?.address_street || address || companyData.address_street || site.address || "").trim();
-
-      const finalCompanyData: CompanyData = {
-        ...companyData,
-        name: finalName,
-        fantasy_name: finalName,
-        legal_name: businessName.trim() || companyData.legal_name || finalName,
-        phone: finalPhone,
-        whatsapp: finalWhatsapp,
-        email: finalEmail,
-        address_street: finalAddress,
-        address_city: city.trim() || companyData.address_city,
-        address_state: state.trim() || companyData.address_state,
-        hero_badge: heroSec?.badge !== undefined ? heroSec.badge : companyData.hero_badge,
-        hero_subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : companyData.hero_subtitle,
-        floating_whatsapp: {
-          enabled: companyData.floating_whatsapp?.enabled !== false,
-          phone: finalWhatsapp || finalPhone,
-          message: companyData.floating_whatsapp?.message || "Olá! Gostaria de saber mais informações sobre os serviços.",
-          label: companyData.floating_whatsapp?.label || "Fale Conosco",
-        },
-      };
-
-      const finalSections = sections.map((s) => {
-        if (s.type === "hero") {
-          return {
-            ...s,
-            title: finalName,
-            subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : finalCompanyData.hero_subtitle,
-            badge: heroSec?.badge !== undefined ? heroSec.badge : finalCompanyData.hero_badge,
-          };
+  const handleSave = useCallback(
+    async (isSilent = false) => {
+      if (!site) return;
+      setIsSaving(true);
+      try {
+        if (sections.length === 0) {
+          if (!isSilent) toast.error("O site precisa ter pelo menos uma seção.");
+          setIsSaving(false);
+          return;
         }
-        if (s.type === "contact") {
-          return {
-            ...s,
-            phone: finalPhone,
-            whatsapp: finalWhatsapp,
-            email: finalEmail,
-            address_street: finalAddress,
-          };
-        }
-        return s;
-      });
 
-      // Update state locally so editor stays in sync
-      setName(finalName);
-      setPhone(finalPhone);
-      setWhatsapp(finalWhatsapp);
-      setEmail(finalEmail);
-      setAddress(finalAddress);
-      setCompanyData(finalCompanyData);
-      setSections(finalSections);
+        // Prepare fully unified data across hero, contact, companyData, and top-level site fields
+        const heroSec = sections.find((s) => s.type === "hero");
+        const contactSec = sections.find((s) => s.type === "contact");
 
-      // 1. Update site row and persist redundant copy of sections
-      const existingContent = (site.content as Record<string, unknown>) || {};
-      const { error: siteUpdateError } = await supabase
-        .from("sites")
-        .update({
+        const finalName = (name || heroSec?.title || companyData.name || site.name || "").trim();
+        const finalPhone = (phone || contactSec?.phone || companyData.phone || site.phone || "").trim();
+        const finalWhatsapp = (whatsapp || contactSec?.whatsapp || companyData.whatsapp || site.whatsapp || "").trim();
+        const finalEmail = (email || contactSec?.email || companyData.email || site.email || "").trim();
+        const finalAddress = (address || contactSec?.address_street || companyData.address_street || site.address || "").trim();
+
+        const finalCompanyData: CompanyData = {
+          ...companyData,
           name: finalName,
-          business_name: businessName.trim() || finalName,
-          primary_color: primaryColor,
-          font_family: fontFamily,
-          style: style,
-          phone: finalPhone || null,
-          whatsapp: finalWhatsapp || null,
-          email: finalEmail || null,
-          city: city.trim() || null,
-          state: state.trim() || null,
-          address: finalAddress || null,
-          content: {
-            ...existingContent,
-            cnpj: cnpj.trim() || null,
-            facebook_domain_verification: metaVerificationTag.trim() || null,
-            company_data: finalCompanyData,
-            sections: finalSections as any,
+          fantasy_name: finalName,
+          legal_name: businessName.trim() || companyData.legal_name || finalName,
+          phone: finalPhone,
+          whatsapp: finalWhatsapp,
+          email: finalEmail,
+          address_street: finalAddress,
+          address_city: city.trim() || companyData.address_city,
+          address_state: state.trim() || companyData.address_state,
+          hero_badge: heroSec?.badge !== undefined ? heroSec.badge : companyData.hero_badge,
+          hero_subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : companyData.hero_subtitle,
+          floating_whatsapp: {
+            enabled: companyData.floating_whatsapp?.enabled !== false,
+            phone: finalWhatsapp || finalPhone,
+            message: companyData.floating_whatsapp?.message || "Olá! Gostaria de saber mais informações sobre os serviços.",
+            label: companyData.floating_whatsapp?.label || "Fale Conosco",
           },
-        })
-        .eq("id", site.id);
+        };
 
-      if (siteUpdateError) throw siteUpdateError;
+        const finalSections = sections.map((s) => {
+          if (s.type === "hero") {
+            return {
+              ...s,
+              title: finalName,
+              subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : finalCompanyData.hero_subtitle,
+              badge: heroSec?.badge !== undefined ? heroSec.badge : finalCompanyData.hero_badge,
+            };
+          }
+          if (s.type === "contact") {
+            return {
+              ...s,
+              phone: finalPhone,
+              whatsapp: finalWhatsapp,
+              email: finalEmail,
+              address_street: finalAddress,
+            };
+          }
+          return s;
+        });
 
-      // 2. Update or insert site_page
-      if (page?.id) {
-        const { error: pageUpdateError } = await supabase
-          .from("site_pages")
+        // 1. Update site row and persist redundant copy of sections
+        const existingContent = (site.content as Record<string, unknown>) || {};
+        const { error: siteUpdateError } = await supabase
+          .from("sites")
           .update({
-            sections: finalSections as any,
-            seo: {
-              title: seoTitle.trim() || `${finalName} | Soluções Especializadas`,
-              description: seoDescription.trim(),
+            name: finalName,
+            business_name: businessName.trim() || finalName,
+            primary_color: primaryColor,
+            font_family: fontFamily,
+            style: style,
+            phone: finalPhone || null,
+            whatsapp: finalWhatsapp || null,
+            email: finalEmail || null,
+            city: city.trim() || null,
+            state: state.trim() || null,
+            address: finalAddress || null,
+            content: {
+              ...existingContent,
+              cnpj: cnpj.trim() || null,
               facebook_domain_verification: metaVerificationTag.trim() || null,
+              company_data: finalCompanyData,
+              sections: finalSections as any,
             },
           })
-          .eq("id", page.id);
+          .eq("id", site.id);
 
-        if (pageUpdateError) throw pageUpdateError;
-      } else {
-        const { error: pageInsertError } = await supabase
-          .from("site_pages")
-          .insert({
-            site_id: site.id,
-            user_id: user!.id,
-            title: "Página inicial",
-            path: "/",
-            position: 0,
-            sections: finalSections as any,
-            seo: {
-              title: seoTitle.trim() || `${finalName} | Soluções Especializadas`,
-              description: seoDescription.trim(),
-              facebook_domain_verification: metaVerificationTag.trim() || null,
-            },
-          });
+        if (siteUpdateError) throw siteUpdateError;
 
-        if (pageInsertError) throw pageInsertError;
+        // 2. Update or insert site_pages (update all pages for site.id)
+        if (page?.id) {
+          const { error: pageUpdateError } = await supabase
+            .from("site_pages")
+            .update({
+              sections: finalSections as any,
+              seo: {
+                title: seoTitle.trim() || `${finalName} | Soluções Especializadas`,
+                description: seoDescription.trim(),
+                facebook_domain_verification: metaVerificationTag.trim() || null,
+              },
+            })
+            .eq("site_id", site.id);
+
+          if (pageUpdateError) throw pageUpdateError;
+        } else {
+          const { error: pageInsertError } = await supabase
+            .from("site_pages")
+            .insert({
+              site_id: site.id,
+              user_id: user!.id,
+              title: "Página inicial",
+              path: "/",
+              position: 0,
+              sections: finalSections as any,
+              seo: {
+                title: seoTitle.trim() || `${finalName} | Soluções Especializadas`,
+                description: seoDescription.trim(),
+                facebook_domain_verification: metaVerificationTag.trim() || null,
+              },
+            });
+
+          if (pageInsertError) throw pageInsertError;
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ["editor-site", siteId] });
+        await queryClient.invalidateQueries({ queryKey: ["editor-page", siteId] });
+        await queryClient.invalidateQueries({ queryKey: ["sites"] });
+        await queryClient.invalidateQueries({ queryKey: ["preview-site", site.slug] });
+        await queryClient.invalidateQueries({ queryKey: ["preview-pages", site.id] });
+        await queryClient.invalidateQueries({ queryKey: ["public-site", site.slug] });
+
+        if (!isSilent) {
+          toast.success("Alterações salvas com sucesso! ✨");
+        }
+      } catch (e: unknown) {
+        if (!isSilent) {
+          toast.error(e instanceof Error ? e.message : "Erro ao salvar alterações.");
+        }
+      } finally {
+        setIsSaving(false);
       }
+    },
+    [
+      site,
+      sections,
+      name,
+      phone,
+      whatsapp,
+      email,
+      address,
+      city,
+      state,
+      companyData,
+      businessName,
+      primaryColor,
+      fontFamily,
+      style,
+      cnpj,
+      metaVerificationTag,
+      seoTitle,
+      seoDescription,
+      page,
+      user,
+      siteId,
+      queryClient,
+    ]
+  );
 
-      await queryClient.invalidateQueries({ queryKey: ["editor-site", siteId] });
-      await queryClient.invalidateQueries({ queryKey: ["editor-page", siteId] });
-      await queryClient.invalidateQueries({ queryKey: ["sites"] });
-      await queryClient.invalidateQueries({ queryKey: ["preview-site", site.slug] });
-      await queryClient.invalidateQueries({ queryKey: ["preview-pages", site.id] });
-      await queryClient.invalidateQueries({ queryKey: ["public-site", site.slug] });
+  // ── Debounced Auto-save (1500ms after last edit) ─────────────────────────
+  useEffect(() => {
+    if (!isInitialized || !hasUnsavedChanges || isSaving) return;
 
-      toast.success("Alterações salvas com sucesso! ✨");
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar alterações.");
-    } finally {
-      setIsSaving(false);
+    const timer = setTimeout(() => {
+      handleSave(true);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [hasUnsavedChanges, isInitialized, isSaving, handleSave]);
+
+  // Handlers to guarantee save before opening preview or live site
+  const handleOpenLive = useCallback(async () => {
+    if (hasUnsavedChanges) {
+      await handleSave(true);
     }
-  }
+    if (site) {
+      window.open(`/s/${site.slug}`, "_blank");
+    }
+  }, [hasUnsavedChanges, handleSave, site]);
+
+  const handleOpenPreview = useCallback(async () => {
+    if (hasUnsavedChanges) {
+      await handleSave(true);
+    }
+    if (site) {
+      window.open(`/preview/${site.slug}`, "_blank");
+    }
+  }, [hasUnsavedChanges, handleSave, site]);
 
   // ── 6. Publish / Unpublish ───────────────────────────────────────────────
   async function handleTogglePublish() {
@@ -667,7 +726,7 @@ function EditorPage() {
     try {
       // If saving is needed, save first
       if (hasUnsavedChanges) {
-        await handleSave();
+        await handleSave(true);
       }
 
       const { error } = await supabase
@@ -679,6 +738,8 @@ function EditorPage() {
 
       await queryClient.invalidateQueries({ queryKey: ["editor-site", siteId] });
       await queryClient.invalidateQueries({ queryKey: ["sites"] });
+      await queryClient.invalidateQueries({ queryKey: ["public-site", site.slug] });
+      await queryClient.invalidateQueries({ queryKey: ["preview-site", site.slug] });
 
       if (nextStatus === "published") {
         toast.success("Site publicado com sucesso! 🚀", {
@@ -748,9 +809,11 @@ function EditorPage() {
         onChangeViewport={setViewport}
         hasUnsavedChanges={hasUnsavedChanges}
         isSaving={isSaving}
-        onSave={handleSave}
+        onSave={() => handleSave(false)}
         isPublishing={isPublishing}
         onTogglePublish={handleTogglePublish}
+        onOpenLive={handleOpenLive}
+        onOpenPreview={handleOpenPreview}
         isAdmin={isAdmin}
         adminUnlocked={adminUnlocked}
         onToggleAdminUnlock={() => setAdminUnlocked((prev) => !prev)}

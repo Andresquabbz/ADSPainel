@@ -29,6 +29,8 @@ interface EditorHeaderProps {
   onSave: () => void;
   isPublishing: boolean;
   onTogglePublish: () => void;
+  onOpenLive?: () => void;
+  onOpenPreview?: () => void;
   isAdmin?: boolean;
   adminUnlocked?: boolean;
   onToggleAdminUnlock?: () => void;
@@ -45,6 +47,8 @@ export function EditorHeader({
   onSave,
   isPublishing,
   onTogglePublish,
+  onOpenLive,
+  onOpenPreview,
   isAdmin,
   adminUnlocked,
   onToggleAdminUnlock,
@@ -126,19 +130,25 @@ export function EditorHeader({
       {/* Right: Preview + Save + Publish */}
       <div className="flex items-center gap-2">
         {isPublished && (
-          <Button variant="ghost" size="sm" asChild className="h-8 px-2.5 text-xs gap-1.5 text-emerald-600 dark:text-emerald-400">
-            <Link to="/s/$siteSlug" params={{ siteSlug }} target="_blank">
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Ver no ar</span>
-            </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenLive ? onOpenLive : () => window.open(`/s/${siteSlug}`, "_blank")}
+            className="h-8 px-2.5 text-xs gap-1.5 text-emerald-600 dark:text-emerald-400"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Ver no ar</span>
           </Button>
         )}
 
-        <Button variant="ghost" size="sm" asChild className="h-8 px-2.5 text-xs gap-1.5">
-          <Link to="/preview/$siteSlug" params={{ siteSlug }} target="_blank">
-            <Eye className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Preview</span>
-          </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onOpenPreview ? onOpenPreview : () => window.open(`/preview/${siteSlug}`, "_blank")}
+          className="h-8 px-2.5 text-xs gap-1.5"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Preview</span>
         </Button>
 
         {isAdmin && (
@@ -161,10 +171,10 @@ export function EditorHeader({
         )}
 
         <Button
-          variant="outline"
+          variant={hasUnsavedChanges ? "hero" : "outline"}
           size="sm"
           onClick={onSave}
-          disabled={isSaving || !hasUnsavedChanges}
+          disabled={isSaving}
           className="h-8 px-3 text-xs gap-1.5"
           title="Salvar alterações (Ctrl+S)"
         >
@@ -173,7 +183,7 @@ export function EditorHeader({
           ) : (
             <Save className="h-3.5 w-3.5" />
           )}
-          <span>{isSaving ? "Salvando..." : "Salvar"}</span>
+          <span>{isSaving ? "Salvando..." : hasUnsavedChanges ? "Salvar alterações" : "Salvo"}</span>
         </Button>
 
         <Button

@@ -871,14 +871,29 @@ function PreviewPage() {
     }
   }
 
-  const heroSec = allSections.find((s) => s.type === "hero");
-  const contactSec = allSections.find((s) => s.type === "contact");
+  const heroSec = allSections.find((s) => s.type === "hero") || (content?.sections as AnySection[] | undefined)?.find((s) => s.type === "hero");
+  const contactSec = allSections.find((s) => s.type === "contact") || (content?.sections as AnySection[] | undefined)?.find((s) => s.type === "contact");
 
   const displayName = heroSec?.title || company?.fantasy_name || company?.name || site.name;
   const displayWhatsapp = contactSec?.whatsapp || company?.whatsapp || site.whatsapp;
   const displayPhone = contactSec?.phone || company?.phone || site.phone;
   const displayEmail = contactSec?.email || company?.email || site.email;
   const displayAddress = contactSec?.address_street || company?.address_street || site.address;
+
+  const mergedCompanyData = company
+    ? {
+        ...company,
+        name: displayName,
+        fantasy_name: displayName,
+        legal_name: company.legal_name || site.business_name || displayName,
+        phone: displayPhone || company.phone,
+        whatsapp: displayWhatsapp || company.whatsapp,
+        email: displayEmail || company.email,
+        address_street: displayAddress || company.address_street,
+        hero_badge: heroSec?.badge !== undefined ? heroSec.badge : company.hero_badge,
+        hero_subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : company.hero_subtitle,
+      }
+    : null;
 
   const floatingConfig = company?.floating_whatsapp || {
     enabled: true,
@@ -1068,7 +1083,33 @@ function PreviewPage() {
       {/* Sections */}
       {hasContent ? (
         <>
-          {activeSections.map((block, idx) => renderSection(block, site, idx, theme, company))}
+          {activeSections.map((block, idx) => {
+            const mergedBlock =
+              block.type === "hero"
+                ? {
+                    ...block,
+                    title: displayName,
+                    subtitle: heroSec?.subtitle !== undefined ? heroSec.subtitle : block.subtitle,
+                    badge: heroSec?.badge !== undefined ? heroSec.badge : block.badge,
+                  }
+                : block.type === "contact"
+                ? {
+                    ...block,
+                    phone: displayPhone,
+                    whatsapp: displayWhatsapp,
+                    email: displayEmail,
+                    address_street: displayAddress,
+                    title: contactSec?.title !== undefined ? contactSec.title : block.title,
+                    subtitle: contactSec?.subtitle !== undefined ? contactSec.subtitle : block.subtitle,
+                    instagram: contactSec?.instagram !== undefined ? contactSec.instagram : block.instagram,
+                    facebook: contactSec?.facebook !== undefined ? contactSec.facebook : block.facebook,
+                    linkedin: contactSec?.linkedin !== undefined ? contactSec.linkedin : block.linkedin,
+                    website: contactSec?.website !== undefined ? contactSec.website : block.website,
+                  }
+                : block;
+
+            return renderSection(mergedBlock, site, idx, theme, mergedCompanyData);
+          })}
           {!activeSections.some((s) => s.type === "privacy_policy" || s.type === "privacy") &&
             renderSection(
               {
@@ -1085,7 +1126,7 @@ function PreviewPage() {
               site,
               9999,
               theme,
-              company
+              mergedCompanyData
             )}
         </>
       ) : (

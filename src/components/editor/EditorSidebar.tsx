@@ -101,7 +101,14 @@ export function EditorSidebar({
     category === "Empresa Institucional" ||
     !!companyData;
 
-  const [tab, setTab] = useState(isInstitutional ? "empresa" : "sections");
+  const [tab, setTab] = useState("sections");
+
+  // Whenever a section is selected (e.g. from canvas click), switch to sections tab
+  useEffect(() => {
+    if (selectedSectionIndex !== null) {
+      setTab("sections");
+    }
+  }, [selectedSectionIndex]);
 
   return (
     <div className="w-96 flex flex-col border-r border-border bg-card h-full shrink-0 overflow-hidden">
